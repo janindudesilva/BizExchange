@@ -1,15 +1,20 @@
 package com.businessexchange.business.controller;
 
 import com.businessexchange.business.dto.BusinessCreateRequest;
+import com.businessexchange.business.dto.BusinessFileResponse;
 import com.businessexchange.business.dto.BusinessResponse;
 import com.businessexchange.business.dto.BusinessUpdateRequest;
+import com.businessexchange.business.service.BusinessFileService;
 import com.businessexchange.business.service.BusinessService;
 import com.businessexchange.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -18,6 +23,7 @@ import java.util.List;
 public class BusinessController {
 
     private final BusinessService businessService;
+    private final BusinessFileService businessFileService;
 
     @PostMapping
     public ApiResponse<BusinessResponse> createBusiness(@Valid @RequestBody BusinessCreateRequest request) {
@@ -49,16 +55,33 @@ public class BusinessController {
     public ApiResponse<BusinessResponse> updateBusiness(
             @PathVariable Long id,
             @Valid @RequestBody BusinessUpdateRequest request) {
-                BusinessResponse response = businessService.updateBusiness(id, request);
-                return ApiResponse.success("Business updated successfully", response);
-            }
+        BusinessResponse response = businessService.updateBusiness(id, request);
+        return ApiResponse.success("Business updated successfully", response);
+    }
 
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('SELLER') or hasRole('ADMIN')")
+    public ApiResponse<Void> deleteBusiness(@PathVariable Long id) {
+        businessService.deleteBusiness(id);
+        return ApiResponse.success("Business deleted successfully", null);
+    }
 
-            @DeleteMapping("/{id}")
-            @PreAuthorize("hasRole('SELLER') or hasRole('ADMIN')")
-            public ApiResponse<Void> deleteBusiness(@PathVariable Long id) {
+    // ── File endpoints ──
 
-                businessService.deleteBusiness(id);
-                return ApiResponse.success("Business deleted successfully", null);
-            }
+    @PostMapping("/{id}/files")
+    @PreAuthorize("hasRole('SELLER') or hasRole('ADMIN')")
+    public ApiResponse<List<BusinessFileResponse>> uploadFiles(
+            @PathVariable Long id,
+            @RequestParam(value = "images", required = false) List<MultipartFile> images,
+            @RequestParam(value = "documents", required = false) List<MultipartFile> documents,
+            @RequestParam(value = "financialReports", required = false) List<MultipartFile> financialReports
+    ) throws IOException {
+        List<BusinessFileResponse> files = businessFileService.uploadFiles(id, images, documents, financialReports);
+        return ApiResponse.success("Files uploaded successfully", files);
+    }
+
+    @GetMapping("/files/{fileId}")
+    public ResponseEntity<byte[]> serveFile(@PathVariable Long fileId) {
+        return businessFileService.serveFile(fileId);
+    }
 }
