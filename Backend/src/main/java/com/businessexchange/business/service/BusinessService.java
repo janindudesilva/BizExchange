@@ -1,6 +1,7 @@
 package com.businessexchange.business.service;
 
 import com.businessexchange.business.dto.BusinessCreateRequest;
+import com.businessexchange.business.dto.BusinessUpdateRequest;
 import com.businessexchange.business.dto.BusinessResponse;
 import com.businessexchange.business.entity.*;
 import com.businessexchange.business.repository.*;
@@ -24,14 +25,13 @@ public class BusinessService {
     private final BusinessRepository businessRepository;
     private final BusinessCategoryRepository categoryRepository;
     private final UserRepository userRepository;
-    private final SellerProfileRepository sellerProfileRepository; // ← added
+    private final SellerProfileRepository sellerProfileRepository;
 
     @Transactional
     public BusinessResponse createBusiness(BusinessCreateRequest request) {
         User seller = userRepository.findById(request.getSellerId())
                 .orElseThrow(() -> new ResourceNotFoundException("Seller not found"));
 
-        // ← added: block unverified sellers from listing
         SellerProfile sellerProfile = sellerProfileRepository.findByUserId(seller.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Seller profile not found"));
 
@@ -81,6 +81,42 @@ public class BusinessService {
         return mapToResponse(business);
     }
 
+    @Transactional
+    public BusinessResponse updateBusiness(Long id, BusinessUpdateRequest request) {
+        Business business = businessRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Business not found"));
+
+        business.setTitle(request.getTitle());
+        business.setDescription(request.getDescription());
+        business.setLocation(request.getLocation());
+        business.setAddress(request.getAddress());
+        business.setAskingPrice(request.getAskingPrice());
+        business.setBusinessAgeYears(request.getBusinessAgeYears());
+        business.setNumberOfEmployees(request.getNumberOfEmployees());
+        business.setReasonForSelling(request.getReasonForSelling());
+
+        if (request.getCategory() != null) {
+            BusinessCategory category = categoryRepository.findByName(request.getCategory())
+                    .orElseGet(() -> categoryRepository.save(
+                            BusinessCategory.builder().name(request.getCategory()).build()
+                    ));
+            business.setCategory(category);
+        }
+
+        // Reset to PENDING_REVIEW so admin re-approves after edits
+        business.setStatus(BusinessStatus.PENDING_REVIEW);
+
+        return mapToResponse(businessRepository.save(business));
+    }
+
+    @Transactional
+    public void deleteBusiness(Long id) {
+        if (!businessRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Business not found");
+        }
+        businessRepository.deleteById(id);
+    }
+
     public BusinessResponse mapToResponse(Business business) {
         return BusinessResponse.builder()
                 .id(business.getId())
@@ -91,6 +127,7 @@ public class BusinessService {
                 .location(business.getLocation())
                 .askingPrice(business.getAskingPrice())
                 .status(business.getStatus().name())
+                .rejectionReason(business.getRejectionReason())
                 .build();
     }
 

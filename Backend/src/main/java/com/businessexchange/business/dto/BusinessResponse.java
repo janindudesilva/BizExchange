@@ -16,4 +16,5 @@ public class BusinessResponse {
     private String location;
     private BigDecimal askingPrice;
     private String status;
+    private String rejectionReason;
 }
