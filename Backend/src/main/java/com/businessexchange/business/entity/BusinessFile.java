@@ -2,6 +2,8 @@ package com.businessexchange.business.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -32,8 +34,8 @@ public class BusinessFile {
     @Column(name = "content_type")
     private String contentType;
 
-    @Lob
-    @Column(name = "data", nullable = false, columnDefinition = "BYTEA")
+    @JdbcTypeCode(SqlTypes.VARBINARY)
+    @Column(name = "data", nullable = false)
     private byte[] data;
 
     @Column(name = "uploaded_at", nullable = false)

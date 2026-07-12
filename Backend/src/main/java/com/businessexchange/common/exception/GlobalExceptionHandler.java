@@ -2,8 +2,10 @@ package com.businessexchange.common.exception;
 
 import com.businessexchange.common.response.ApiResponse;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -37,6 +39,18 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public ApiResponse<Object> handleUnverifiedSeller(UnverifiedSellerException ex) {
         return ApiResponse.error(ex.getMessage());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ApiResponse<Object> handleAccessDenied(AccessDeniedException ex) {
+        return ApiResponse.error("You do not have permission to perform this action");
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+    public ApiResponse<Object> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
+        return ApiResponse.error("File too large. Maximum upload size is 20 MB per file.");
     }
 
     @ExceptionHandler(Exception.class)

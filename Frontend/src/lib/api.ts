@@ -24,3 +24,29 @@ export async function apiRequest<T>(
 
   return data;
 }
+
+export async function apiUpload<T>(
+  endpoint: string,
+  formData: FormData
+): Promise<T> {
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method: "POST",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      (data as { message?: string }).message || "File upload failed"
+    );
+  }
+
+  return data as T;
+}

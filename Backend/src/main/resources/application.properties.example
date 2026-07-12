@@ -1,0 +1,13 @@
+spring.datasource.url=jdbc:postgresql://localhost:5432/bizexchange
+spring.datasource.username=postgres
+spring.datasource.password=your_password
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=false
+
+# Allow uploads up to 20 MB per file (matches the frontend hint)
+spring.servlet.multipart.max-file-size=20MB
+spring.servlet.multipart.max-request-size=100MB
+
+jwt.secret=your-256-bit-secret-key-here-change-in-production
+jwt.expiration=86400000

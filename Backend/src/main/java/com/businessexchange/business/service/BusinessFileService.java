@@ -51,10 +51,14 @@ public class BusinessFileService {
     }
 
     private void saveFile(Business business, MultipartFile file, BusinessFile.FileType type) throws IOException {
+        if (file == null || file.isEmpty()) {
+            return;
+        }
+
         fileRepository.save(BusinessFile.builder()
                 .business(business)
                 .fileType(type)
-                .originalName(file.getOriginalFilename())
+                .originalName(file.getOriginalFilename() != null ? file.getOriginalFilename() : "unnamed")
                 .contentType(file.getContentType())
                 .data(file.getBytes())
                 .build());

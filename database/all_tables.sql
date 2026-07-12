@@ -180,6 +180,23 @@ CREATE TABLE business_images (
         ON DELETE CASCADE
 );
 
+-- Used by the Spring backend (BusinessFile entity) for photos, documents, and reports.
+CREATE TABLE business_files (
+    id BIGSERIAL PRIMARY KEY,
+
+    business_id BIGINT NOT NULL,
+    file_type VARCHAR(50) NOT NULL,
+    original_name VARCHAR(255) NOT NULL,
+    content_type VARCHAR(100),
+    data BYTEA NOT NULL,
+    uploaded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_business_file_business
+        FOREIGN KEY (business_id)
+        REFERENCES businesses(id)
+        ON DELETE CASCADE
+);
+
 CREATE TABLE business_documents (
     id BIGSERIAL PRIMARY KEY,
 

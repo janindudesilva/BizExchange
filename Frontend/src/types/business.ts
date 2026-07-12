@@ -1,3 +1,11 @@
+export interface BusinessFile {
+  id: number;
+  fileType: "IMAGE" | "DOCUMENT" | "FINANCIAL_REPORT";
+  originalName: string;
+  url: string;
+  uploadedAt: string;
+}
+
 export interface Business {
   id: number;
   title: string;
@@ -7,6 +15,7 @@ export interface Business {
   location: string;
   askingPrice: number;
   status: string;
+  rejectionReason?: string;
 }
 
 export interface BusinessApiResponse {
@@ -23,7 +32,7 @@ export interface SingleBusinessApiResponse {
 
 export interface BusinessCreateRequest {
   sellerId: number;
-  categoryId: number;
+  category: string;
   title: string;
   description: string;
   location: string;

@@ -84,4 +84,10 @@ public class BusinessController {
     public ResponseEntity<byte[]> serveFile(@PathVariable Long fileId) {
         return businessFileService.serveFile(fileId);
     }
+
+    @GetMapping("/{id}/files")
+    public ApiResponse<List<BusinessFileResponse>> getFilesForBusiness(@PathVariable Long id) {
+        List<BusinessFileResponse> files = businessFileService.getFilesForBusiness(id);
+        return ApiResponse.success("Files fetched successfully", files);
+    }
 }

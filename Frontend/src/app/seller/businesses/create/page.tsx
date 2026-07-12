@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, apiUpload } from "@/lib/api";
 
 // ── FileDropZone ──
 interface FileDropZoneProps {
@@ -158,15 +158,14 @@ export default function CreateBusinessPage() {
         documentFiles.forEach((f) => fileData.append("documents", f));
         financialFiles.forEach((f) => fileData.append("financialReports", f));
 
-        const token = localStorage.getItem("token");
-        await fetch(`http://localhost:8080/api/businesses/${businessId}/files`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: fileData,
-        });
+        await apiUpload(`/businesses/${businessId}/files`, fileData);
       }
 
-      setMessage(result.message);
+      setMessage(
+          hasFiles
+              ? `${result.message} Files uploaded successfully.`
+              : result.message
+      );
       formElement.reset();
       setCategory("");
       setImageFiles([]);

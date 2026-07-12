@@ -20,7 +20,7 @@ public class BusinessFileResponse {
                 .id(file.getId())
                 .fileType(file.getFileType().name())
                 .originalName(file.getOriginalName())
-                .url("/api/businesses/files/" + file.getId())
+                .url("/businesses/files/" + file.getId())
                 .uploadedAt(file.getUploadedAt())
                 .build();
     }
