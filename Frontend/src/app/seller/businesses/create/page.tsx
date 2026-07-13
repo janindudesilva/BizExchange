@@ -39,8 +39,8 @@ function FileDropZone({
   return (
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-sm font-medium text-slate-600">{label}</span>
-          <span className="text-xs text-slate-400 bg-white border border-slate-200 px-2 py-0.5 rounded-full">
+          <span className="text-sm font-medium text-[#8092ab]">{label}</span>
+          <span className="text-xs text-[#4f6380] bg-[#0d1220] border border-white/10 px-2 py-0.5 rounded-full">
           {badge}
         </span>
         </div>
@@ -56,16 +56,16 @@ function FileDropZone({
             }}
             className={`flex items-center gap-3 p-4 rounded-xl border-2 border-dashed cursor-pointer transition-colors
           ${dragging
-                ? "border-blue-400 bg-blue-50"
-                : "border-slate-200 hover:border-blue-300 hover:bg-slate-100"
+                ? "border-[#00cfa8]/50 bg-[#0c212a]"
+                : "border-white/10 hover:border-[#00cfa8]/30 hover:bg-white/[0.02]"
             }`}
         >
           <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl flex-shrink-0 ${iconClass}`}>
             {icon}
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-700">{hint}</p>
-            <p className="text-xs text-slate-400 mt-0.5">{sub}</p>
+            <p className="text-sm font-medium text-[#c7d2e0]">{hint}</p>
+            <p className="text-xs text-[#4f6380] mt-0.5">{sub}</p>
           </div>
         </div>
 
@@ -83,14 +83,14 @@ function FileDropZone({
               {files.map((f, i) => (
                   <li
                       key={i}
-                      className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2"
+                      className="flex items-center gap-2 bg-[#0d1220] border border-white/10 rounded-lg px-3 py-2"
                   >
-                    <span className="text-sm text-slate-700 flex-1 truncate">{f.name}</span>
-                    <span className="text-xs text-slate-400 flex-shrink-0">{fmtSize(f.size)}</span>
+                    <span className="text-sm text-[#c7d2e0] flex-1 truncate">{f.name}</span>
+                    <span className="text-xs text-[#4f6380] flex-shrink-0">{fmtSize(f.size)}</span>
                     <button
                         type="button"
                         onClick={() => onRemove(i)}
-                        className="w-5 h-5 flex items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors flex-shrink-0"
+                        className="w-5 h-5 flex items-center justify-center rounded-full text-[#4f6380] hover:bg-red-500/20 hover:text-red-400 transition-colors flex-shrink-0"
                         aria-label={`Remove ${f.name}`}
                     >
                       ✕
@@ -111,6 +111,8 @@ export default function CreateBusinessPage() {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [documentFiles, setDocumentFiles] = useState<File[]>([]);
   const [financialFiles, setFinancialFiles] = useState<File[]>([]);
+
+  const inputClass = "w-full bg-[#121c32] border border-white/10 text-[#c7d2e0] placeholder:text-[#4f6380] p-3 rounded-lg focus:outline-none focus:border-[#00cfa8]/50 transition-colors";
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -181,153 +183,155 @@ export default function CreateBusinessPage() {
   }
 
   return (
-      <main className="max-w-2xl mx-auto bg-white mt-10 p-8 rounded-xl shadow-sm text-slate-950">
-        <h1 className="text-3xl font-bold mb-6">Create Business Listing</h1>
+      <main className="max-w-2xl mx-auto mt-10 px-4">
+        <div className="bg-[#0d1220] border border-white/5 p-8 rounded-2xl">
+          <h1 className="text-2xl font-bold mb-6 text-[#d8e4f0] tracking-wide">CREATE BUSINESS LISTING</h1>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
 
-          <select
-              name="category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full border p-3 rounded-md text-slate-950"
-              required
-          >
-            <option value="">Select Business Category</option>
-            <option value="Restaurant">Restaurant</option>
-            <option value="Grocery Shop">Grocery Shop</option>
-            <option value="Salon">Salon</option>
-            <option value="Hotel">Hotel</option>
-            <option value="Online Business">Online Business</option>
-            <option value="Clothing Store">Clothing Store</option>
-            <option value="Pharmacy">Pharmacy</option>
-            <option value="Other">Other</option>
-          </select>
+            <select
+                name="category"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className={inputClass}
+                required
+            >
+              <option value="">Select Business Category</option>
+              <option value="Restaurant">Restaurant</option>
+              <option value="Grocery Shop">Grocery Shop</option>
+              <option value="Salon">Salon</option>
+              <option value="Hotel">Hotel</option>
+              <option value="Online Business">Online Business</option>
+              <option value="Clothing Store">Clothing Store</option>
+              <option value="Pharmacy">Pharmacy</option>
+              <option value="Other">Other</option>
+            </select>
 
-          {category === "Other" && (
-              <input
-                  name="otherCategory"
-                  placeholder="Enter Category"
-                  className="w-full border p-3 rounded-md placeholder:text-slate-400"
-                  required
+            {category === "Other" && (
+                <input
+                    name="otherCategory"
+                    placeholder="Enter Category"
+                    className={inputClass}
+                    required
+                />
+            )}
+
+            <input
+                name="title"
+                placeholder="Business Title"
+                className={inputClass}
+                required
+            />
+
+            <textarea
+                name="description"
+                placeholder="Business Description"
+                className={inputClass}
+                rows={4}
+                required
+            />
+
+            <input
+                name="location"
+                placeholder="Location"
+                className={inputClass}
+                required
+            />
+
+            <input
+                name="address"
+                placeholder="Address"
+                className={inputClass}
+            />
+
+            <input
+                name="askingPrice"
+                type="number"
+                placeholder="Asking Price (LKR)"
+                className={inputClass}
+                required
+            />
+
+            <input
+                name="businessAgeYears"
+                type="number"
+                placeholder="Business Age in Years"
+                className={inputClass}
+            />
+
+            <input
+                name="numberOfEmployees"
+                type="number"
+                placeholder="Number of Employees"
+                className={inputClass}
+            />
+
+            <textarea
+                name="reasonForSelling"
+                placeholder="Reason for Selling"
+                className={inputClass}
+                rows={3}
+            />
+
+            {/* ── File Uploads ── */}
+            <div className="border border-white/10 rounded-xl p-5 space-y-5 bg-[#080c15]">
+              <p className="font-medium text-[#c7d2e0]">
+                Attachments{" "}
+                <span className="text-sm font-normal text-[#4f6380]">— optional</span>
+              </p>
+
+              <FileDropZone
+                  label="Business photos"
+                  hint="Drop photos here or browse"
+                  sub="Multiple files allowed · max 20 MB each"
+                  accept="image/*"
+                  iconClass="text-blue-400 bg-blue-500/20"
+                  icon="📷"
+                  badge="JPG · PNG · WEBP"
+                  files={imageFiles}
+                  onAdd={(f) => setImageFiles((p) => [...p, ...f])}
+                  onRemove={(i) => setImageFiles((p) => p.filter((_, idx) => idx !== i))}
               />
+
+              <FileDropZone
+                  label="Business documents"
+                  hint="Drop documents here or browse"
+                  sub="Licences, registrations, ownership docs"
+                  accept=".pdf,.doc,.docx,application/pdf,application/msword"
+                  iconClass="text-[#00cfa8] bg-[#00cfa8]/20"
+                  icon="📄"
+                  badge="PDF · DOCX"
+                  files={documentFiles}
+                  onAdd={(f) => setDocumentFiles((p) => [...p, ...f])}
+                  onRemove={(i) => setDocumentFiles((p) => p.filter((_, idx) => idx !== i))}
+              />
+
+              <FileDropZone
+                  label="Financial reports"
+                  hint="Drop reports here or browse"
+                  sub="P&L statements, balance sheets, tax returns"
+                  accept=".pdf,.xlsx,.xls,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  iconClass="text-[#f5a623] bg-[#f5a623]/20"
+                  icon="📊"
+                  badge="PDF · XLSX"
+                  files={financialFiles}
+                  onAdd={(f) => setFinancialFiles((p) => [...p, ...f])}
+                  onRemove={(i) => setFinancialFiles((p) => p.filter((_, idx) => idx !== i))}
+              />
+            </div>
+
+            <button
+                disabled={submitting}
+                className="w-full bg-[#00cfa8] text-[#080c15] p-3 rounded-lg font-semibold hover:bg-[#00e6bc] disabled:opacity-50 transition-colors"
+            >
+              {submitting ? "Submitting..." : "Submit for Review"}
+            </button>
+          </form>
+
+          {message && (
+              <p className="mt-4 text-sm text-[#8092ab]">{message}</p>
           )}
-
-          <input
-              name="title"
-              placeholder="Business Title"
-              className="w-full border p-3 rounded-md"
-              required
-          />
-
-          <textarea
-              name="description"
-              placeholder="Business Description"
-              className="w-full border p-3 rounded-md"
-              rows={4}
-              required
-          />
-
-          <input
-              name="location"
-              placeholder="Location"
-              className="w-full border p-3 rounded-md"
-              required
-          />
-
-          <input
-              name="address"
-              placeholder="Address"
-              className="w-full border p-3 rounded-md"
-          />
-
-          <input
-              name="askingPrice"
-              type="number"
-              placeholder="Asking Price (LKR)"
-              className="w-full border p-3 rounded-md"
-              required
-          />
-
-          <input
-              name="businessAgeYears"
-              type="number"
-              placeholder="Business Age in Years"
-              className="w-full border p-3 rounded-md"
-          />
-
-          <input
-              name="numberOfEmployees"
-              type="number"
-              placeholder="Number of Employees"
-              className="w-full border p-3 rounded-md"
-          />
-
-          <textarea
-              name="reasonForSelling"
-              placeholder="Reason for Selling"
-              className="w-full border p-3 rounded-md"
-              rows={3}
-          />
-
-          {/* ── File Uploads ── */}
-          <div className="border border-slate-200 rounded-xl p-5 space-y-5 bg-slate-50">
-            <p className="font-medium text-slate-700">
-              Attachments{" "}
-              <span className="text-sm font-normal text-slate-400">— optional</span>
-            </p>
-
-            <FileDropZone
-                label="Business photos"
-                hint="Drop photos here or browse"
-                sub="Multiple files allowed · max 20 MB each"
-                accept="image/*"
-                iconClass="text-blue-500 bg-blue-50"
-                icon="📷"
-                badge="JPG · PNG · WEBP"
-                files={imageFiles}
-                onAdd={(f) => setImageFiles((p) => [...p, ...f])}
-                onRemove={(i) => setImageFiles((p) => p.filter((_, idx) => idx !== i))}
-            />
-
-            <FileDropZone
-                label="Business documents"
-                hint="Drop documents here or browse"
-                sub="Licences, registrations, ownership docs"
-                accept=".pdf,.doc,.docx,application/pdf,application/msword"
-                iconClass="text-green-600 bg-green-50"
-                icon="📄"
-                badge="PDF · DOCX"
-                files={documentFiles}
-                onAdd={(f) => setDocumentFiles((p) => [...p, ...f])}
-                onRemove={(i) => setDocumentFiles((p) => p.filter((_, idx) => idx !== i))}
-            />
-
-            <FileDropZone
-                label="Financial reports"
-                hint="Drop reports here or browse"
-                sub="P&L statements, balance sheets, tax returns"
-                accept=".pdf,.xlsx,.xls,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                iconClass="text-amber-500 bg-amber-50"
-                icon="📊"
-                badge="PDF · XLSX"
-                files={financialFiles}
-                onAdd={(f) => setFinancialFiles((p) => [...p, ...f])}
-                onRemove={(i) => setFinancialFiles((p) => p.filter((_, idx) => idx !== i))}
-            />
-          </div>
-
-          <button
-              disabled={submitting}
-              className="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            {submitting ? "Submitting..." : "Submit for Review"}
-          </button>
-        </form>
-
-        {message && (
-            <p className="mt-4 text-sm text-slate-700">{message}</p>
-        )}
+        </div>
       </main>
   );
 }

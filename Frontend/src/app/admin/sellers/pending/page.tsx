@@ -59,46 +59,47 @@ export default function PendingSellersPage() {
         }
     };
 
-    if (loading) return <p className="p-10 text-white">Loading...</p>;
-    if (error) return <p className="p-10 text-red-500">{error}</p>;
+    if (loading) return <p className="p-10 text-[#4f6380]">Loading...</p>;
+    if (error) return <p className="p-10 text-red-400">{error}</p>;
 
     return (
         <main className="max-w-6xl mx-auto px-6 py-10">
-            <h1 className="text-3xl font-bold mb-8 text-white">Pending Seller Verifications</h1>
+            <h1 className="text-2xl font-bold mb-2 text-[#d8e4f0] tracking-wide">PENDING SELLER VERIFICATIONS</h1>
+            <p className="text-[#4f6380] text-sm mb-8">Review and approve or reject seller profiles</p>
 
             {sellers.length === 0 ? (
-                <p className="text-slate-100">No pending sellers right now.</p>
+                <p className="text-[#4f6380]">No pending sellers right now.</p>
             ) : (
-                <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                    <table className="w-full text-left text-white">
-                        <thead className="bg-slate-900">
-                        <tr>
-                            <th className="p-3">Name</th>
-                            <th className="p-3">Email</th>
-                            <th className="p-3">Phone</th>
-                            <th className="p-3">NIC/Passport</th>
-                            <th className="p-3">Actions</th>
+                <div className="bg-[#121c32] border border-white/5 rounded-2xl overflow-hidden">
+                    <table className="w-full text-left">
+                        <thead>
+                        <tr className="border-b border-white/5">
+                            <th className="p-4 text-[11px] tracking-[0.1em] text-[#4f6380] font-medium">NAME</th>
+                            <th className="p-4 text-[11px] tracking-[0.1em] text-[#4f6380] font-medium">EMAIL</th>
+                            <th className="p-4 text-[11px] tracking-[0.1em] text-[#4f6380] font-medium">PHONE</th>
+                            <th className="p-4 text-[11px] tracking-[0.1em] text-[#4f6380] font-medium">NIC/PASSPORT</th>
+                            <th className="p-4 text-[11px] tracking-[0.1em] text-[#4f6380] font-medium">ACTIONS</th>
                         </tr>
                         </thead>
-                        <tbody className="text-slate-900">
+                        <tbody>
                         {sellers.map((s) => (
-                            <tr key={s.id} className="border-t">
-                                <td className="p-3">{s.fullName}</td>
-                                <td className="p-3">{s.email}</td>
-                                <td className="p-3">{s.phone}</td>
-                                <td className="p-3">{s.nicOrPassport}</td>
-                                <td className="p-3 space-x-2">
+                            <tr key={s.id} className="border-t border-white/5 hover:bg-white/[0.02] transition-colors">
+                                <td className="p-4 text-sm text-[#d8e4f0]">{s.fullName}</td>
+                                <td className="p-4 text-sm text-[#8092ab]">{s.email}</td>
+                                <td className="p-4 text-sm text-[#8092ab]">{s.phone}</td>
+                                <td className="p-4 text-sm text-[#8092ab]">{s.nicOrPassport}</td>
+                                <td className="p-4 space-x-2">
                                     <button
                                         disabled={actionLoadingId === s.id}
                                         onClick={() => handleApprove(s.id)}
-                                        className="bg-green-600 text-white px-3 py-1 rounded-md disabled:opacity-50"
+                                        className="bg-[#00cfa8] text-[#080c15] px-3 py-1 rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-[#00e6bc] transition-colors"
                                     >
                                         Approve
                                     </button>
                                     <button
                                         disabled={actionLoadingId === s.id}
                                         onClick={() => handleReject(s.id)}
-                                        className="bg-red-600 text-white px-3 py-1 rounded-md disabled:opacity-50"
+                                        className="bg-red-500/20 text-red-400 px-3 py-1 rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-red-500/30 transition-colors"
                                     >
                                         Reject
                                     </button>

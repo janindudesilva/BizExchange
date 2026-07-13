@@ -66,118 +66,126 @@ export default function RegisterPage() {
     }
   }
 
+  const inputClass = "w-full bg-[#121c32] border border-white/10 text-[#c7d2e0] placeholder:text-[#4f6380] p-3 rounded-lg focus:outline-none focus:border-[#00cfa8]/50 transition-colors";
+
   return (
-    <main className="max-w-2xl mx-auto bg-white mt-10 p-8 rounded-xl shadow-sm text-slate-950">
-      <h1 className="text-3xl font-bold mb-6 text-slate-950">Create Account</h1>
+    <main className="max-w-2xl mx-auto mt-16 px-4">
+      <div className="bg-[#0d1220] border border-white/5 p-8 rounded-2xl">
+        <h1 className="text-3xl font-bold mb-6 text-[#d8e4f0] tracking-wide">Create Account</h1>
 
-      <div className="flex gap-4 mb-6">
-        <button
-          onClick={() => setRole("buyer")}
-          className={`px-4 py-2 rounded-md ${
-            role === "buyer" ? "bg-blue-600 text-white" : "bg-slate-200"
-          }`}
-        >
-          Buyer
-        </button>
+        <div className="flex gap-3 mb-6">
+          <button
+            onClick={() => setRole("buyer")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              role === "buyer"
+                ? "bg-[#00cfa8] text-[#080c15]"
+                : "bg-[#121c32] text-[#8092ab] border border-white/10 hover:text-[#c7d2e0]"
+            }`}
+          >
+            Buyer
+          </button>
 
-        <button
-          onClick={() => setRole("seller")}
-          className={`px-4 py-2 rounded-md ${
-            role === "seller" ? "bg-blue-600 text-black" : "bg-slate-200"
-          }`}
-        >
-          Seller
-        </button>
+          <button
+            onClick={() => setRole("seller")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              role === "seller"
+                ? "bg-[#00cfa8] text-[#080c15]"
+                : "bg-[#121c32] text-[#8092ab] border border-white/10 hover:text-[#c7d2e0]"
+            }`}
+          >
+            Seller
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            name="fullName"
+            placeholder="Full Name"
+            className={inputClass}
+            required
+          />
+
+          <input
+            name="email"
+            type="email"
+            placeholder="Email"
+            className={inputClass}
+            required
+          />
+
+          <input
+            name="phone"
+            placeholder="Phone"
+            className={inputClass}
+          />
+
+          <input
+            name="password"
+            type="password"
+            placeholder="Password"
+            className={inputClass}
+            required
+          />
+
+          {role === "buyer" && (
+            <>
+              <input
+                name="preferredBusinessCategory"
+                placeholder="Preferred Business Category"
+                className={inputClass}
+              />
+
+              <input
+                name="preferredLocation"
+                placeholder="Preferred Location"
+                className={inputClass}
+              />
+
+              <input
+                name="budgetMin"
+                type="number"
+                placeholder="Minimum Budget"
+                className={inputClass}
+              />
+
+              <input
+                name="budgetMax"
+                type="number"
+                placeholder="Maximum Budget"
+                className={inputClass}
+              />
+            </>
+          )}
+
+          {role === "seller" && (
+            <>
+              <input
+                name="nicOrPassport"
+                placeholder="NIC or Passport"
+                className={inputClass}
+              />
+
+              <input
+                name="address"
+                placeholder="Address"
+                className={inputClass}
+              />
+
+              <input
+                name="businessOwnerType"
+                placeholder="Business Owner Type"
+                className={inputClass}
+              />
+            </>
+          )}
+
+          <button className="w-full bg-[#00cfa8] text-[#080c15] p-3 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors">
+            Register
+          </button>
+        </form>
+
+        {message && <p className="mt-4 text-sm text-[#8092ab]">{message}</p>}
       </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          name="fullName"
-          placeholder="Full Name"
-          className="w-full border p-3 rounded-md"
-          required
-        />
-
-        <input
-          name="email"
-          type="email"
-          placeholder="Email"
-          className="w-full border p-3 rounded-md"
-          required
-        />
-
-        <input
-          name="phone"
-          placeholder="Phone"
-          className="w-full border p-3 rounded-md"
-        />
-
-        <input
-          name="password"
-          type="password"
-          placeholder="Password"
-          className="w-full border p-3 rounded-md"
-          required
-        />
-
-        {role === "buyer" && (
-          <>
-            <input
-              name="preferredBusinessCategory"
-              placeholder="Preferred Business Category"
-              className="w-full border p-3 rounded-md"
-            />
-
-            <input
-              name="preferredLocation"
-              placeholder="Preferred Location"
-              className="w-full border p-3 rounded-md"
-            />
-
-            <input
-              name="budgetMin"
-              type="number"
-              placeholder="Minimum Budget"
-              className="w-full border p-3 rounded-md"
-            />
-
-            <input
-              name="budgetMax"
-              type="number"
-              placeholder="Maximum Budget"
-              className="w-full border p-3 rounded-md"
-            />
-          </>
-        )}
-
-        {role === "seller" && (
-          <>
-            <input
-              name="nicOrPassport"
-              placeholder="NIC or Passport"
-              className="w-full border p-3 rounded-md"
-            />
-
-            <input
-              name="address"
-              placeholder="Address"
-              className="w-full border p-3 rounded-md"
-            />
-
-            <input
-              name="businessOwnerType"
-              placeholder="Business Owner Type"
-              className="w-full border p-3 rounded-md"
-            />
-          </>
-        )}
-
-        <button className="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700">
-          Register
-        </button>
-      </form>
-
-      {message && <p className="mt-4 text-sm text-slate-700">{message}</p>}
     </main>
   );
 }

@@ -26,18 +26,18 @@ export default async function BusinessesPage() {
   return (
       <main className="max-w-6xl mx-auto px-6 py-10">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold">Available Businesses</h1>
-          <p className="text-slate-300 mt-2">
+          <h1 className="text-3xl font-bold text-[#d8e4f0] tracking-wide">Available Businesses</h1>
+          <p className="text-[#4f6380] mt-2 text-sm">
             Browse approved businesses available for sale.
           </p>
         </div>
 
         {businesses.length === 0 ? (
-            <div className="bg-white p-6 rounded-xl text-black">
-              <p>No businesses available yet.</p>
+            <div className="bg-[#121c32] border border-white/5 p-6 rounded-2xl">
+              <p className="text-[#8092ab]">No businesses available yet.</p>
             </div>
         ) : (
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-3 gap-5">
               {businesses.map((business) => (
                   <BusinessCard key={business.id} business={business} />
               ))}

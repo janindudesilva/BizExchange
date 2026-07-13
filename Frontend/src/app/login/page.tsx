@@ -44,32 +44,34 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="max-w-md mx-auto bg-white mt-10 p-8 rounded-xl shadow-sm text-slate-950">
-      <h1 className="text-3xl font-bold mb-6 text-slate-950">Login</h1>
+    <main className="max-w-md mx-auto mt-16 px-4">
+      <div className="bg-[#0d1220] border border-white/5 p-8 rounded-2xl">
+        <h1 className="text-3xl font-bold mb-6 text-[#d8e4f0] tracking-wide">Login</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          name="email"
-          type="email"
-          placeholder="Email"
-          className="w-full border p-3 rounded-md"
-          required
-        />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            name="email"
+            type="email"
+            placeholder="Email"
+            className="w-full bg-[#121c32] border border-white/10 text-[#c7d2e0] placeholder:text-[#4f6380] p-3 rounded-lg focus:outline-none focus:border-[#00cfa8]/50 transition-colors"
+            required
+          />
 
-        <input
-          name="password"
-          type="password"
-          placeholder="Password"
-          className="w-full border p-3 rounded-md"
-          required
-        />
+          <input
+            name="password"
+            type="password"
+            placeholder="Password"
+            className="w-full bg-[#121c32] border border-white/10 text-[#c7d2e0] placeholder:text-[#4f6380] p-3 rounded-lg focus:outline-none focus:border-[#00cfa8]/50 transition-colors"
+            required
+          />
 
-        <button className="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700">
-          Login
-        </button>
-      </form>
+          <button className="w-full bg-[#00cfa8] text-[#080c15] p-3 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors">
+            Login
+          </button>
+        </form>
 
-      {message && <p className="mt-4 text-sm text-slate-700">{message}</p>}
+        {message && <p className="mt-4 text-sm text-[#8092ab]">{message}</p>}
+      </div>
     </main>
   );
 }

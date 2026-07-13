@@ -55,10 +55,10 @@ export default function MyListingsPage() {
 
     const statusBadge = (status: string) => {
         switch (status) {
-            case "APPROVED": return "✅ Approved";
-            case "REJECTED": return "❌ Rejected";
-            case "PENDING_REVIEW": return "⏳ Pending Review";
-            default: return status;
+            case "APPROVED": return <span className="text-[#00cfa8]">✅ Approved</span>;
+            case "REJECTED": return <span className="text-red-400">❌ Rejected</span>;
+            case "PENDING_REVIEW": return <span className="text-[#f5a623]">⏳ Pending Review</span>;
+            default: return <span className="text-[#8092ab]">{status}</span>;
         }
     };
 
@@ -110,54 +110,59 @@ export default function MyListingsPage() {
         }
     };
 
-    if (loading) return <p className="p-10 text-white">Loading...</p>;
-    if (error) return <p className="p-10 text-red-500">{error}</p>;
+    if (loading) return <p className="p-10 text-[#4f6380]">Loading...</p>;
+    if (error) return <p className="p-10 text-red-400">{error}</p>;
+
+    const inputClass = "w-full bg-[#121c32] border border-white/10 text-[#c7d2e0] placeholder:text-[#4f6380] rounded-lg px-3 py-2 focus:outline-none focus:border-[#00cfa8]/50 transition-colors";
 
     return (
         <main className="max-w-6xl mx-auto px-6 py-10">
             <div className="flex items-center justify-between mb-8">
-                <h1 className="text-3xl font-bold text-white">My Listings</h1>
-                <Link href="/seller/businesses/create" className="bg-blue-600 text-white px-4 py-2 rounded-md">
+                <div>
+                    <h1 className="text-2xl font-bold text-[#d8e4f0] tracking-wide">MY LISTINGS</h1>
+                    <p className="text-[#4f6380] text-sm mt-1">Manage your business listings</p>
+                </div>
+                <Link href="/seller/businesses/create" className="bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors text-sm">
                     + New Listing
                 </Link>
             </div>
 
             {businesses.length === 0 ? (
-                <p className="text-slate-400">You haven&apos;t submitted any business listings yet.</p>
+                <p className="text-[#4f6380]">You haven&apos;t submitted any business listings yet.</p>
             ) : (
-                <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div className="bg-[#121c32] border border-white/5 rounded-2xl overflow-hidden">
                     <table className="w-full text-left">
-                        <thead className="bg-slate-900 text-white">
-                        <tr>
-                            <th className="p-3">ID</th>
-                            <th className="p-3">Title</th>
-                            <th className="p-3">Category</th>
-                            <th className="p-3">Location</th>
-                            <th className="p-3">Asking Price</th>
-                            <th className="p-3">Status</th>
-                            <th className="p-3"></th>
+                        <thead>
+                        <tr className="border-b border-white/5">
+                            <th className="p-4 text-[11px] tracking-[0.1em] text-[#4f6380] font-medium">ID</th>
+                            <th className="p-4 text-[11px] tracking-[0.1em] text-[#4f6380] font-medium">TITLE</th>
+                            <th className="p-4 text-[11px] tracking-[0.1em] text-[#4f6380] font-medium">CATEGORY</th>
+                            <th className="p-4 text-[11px] tracking-[0.1em] text-[#4f6380] font-medium">LOCATION</th>
+                            <th className="p-4 text-[11px] tracking-[0.1em] text-[#4f6380] font-medium">ASKING PRICE</th>
+                            <th className="p-4 text-[11px] tracking-[0.1em] text-[#4f6380] font-medium">STATUS</th>
+                            <th className="p-4 text-[11px] tracking-[0.1em] text-[#4f6380] font-medium"></th>
                         </tr>
                         </thead>
-                        <tbody className="text-slate-900">
+                        <tbody>
                         {businesses.map((b) => (
-                            <tr key={b.id} className="border-t">
-                                <td className="p-3">{b.id}</td>
-                                <td className="p-3">{b.title}</td>
-                                <td className="p-3">{b.category}</td>
-                                <td className="p-3">{b.location}</td>
-                                <td className="p-3">{b.askingPrice}</td>
-                                <td className="p-3">{statusBadge(b.status)}</td>
-                                <td className="p-3 space-x-2">
+                            <tr key={b.id} className="border-t border-white/5 hover:bg-white/[0.02] transition-colors">
+                                <td className="p-4 text-sm text-[#4f6380]">{b.id}</td>
+                                <td className="p-4 text-sm text-[#d8e4f0]">{b.title}</td>
+                                <td className="p-4 text-sm text-[#8092ab]">{b.category}</td>
+                                <td className="p-4 text-sm text-[#8092ab]">{b.location}</td>
+                                <td className="p-4 text-sm text-[#00cfa8] font-medium">{b.askingPrice}</td>
+                                <td className="p-4 text-sm">{statusBadge(b.status)}</td>
+                                <td className="p-4 space-x-2">
                                     <button
                                         onClick={() => openEdit(b)}
-                                        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md"
+                                        className="bg-[#00cfa8]/20 text-[#00cfa8] hover:bg-[#00cfa8]/30 px-3 py-1 rounded-lg text-sm font-medium transition-colors"
                                     >
                                         Edit
                                     </button>
                                     <button
                                         onClick={() => handleDelete(b.id)}
                                         disabled={deleting === b.id}
-                                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md disabled:opacity-50"
+                                        className="bg-red-500/20 text-red-400 hover:bg-red-500/30 px-3 py-1 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
                                     >
                                         {deleting === b.id ? "Deleting..." : "Delete"}
                                     </button>
@@ -172,66 +177,66 @@ export default function MyListingsPage() {
             {/* Edit Modal */}
             {editingBusiness && editForm && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-xl">
-                        <h2 className="text-xl font-bold text-slate-800 mb-4">Edit Listing</h2>
+                    <div className="bg-[#0d1220] border border-white/10 rounded-2xl p-6 w-full max-w-lg shadow-xl">
+                        <h2 className="text-xl font-bold text-[#d8e4f0] mb-4">Edit Listing</h2>
                         <div className="space-y-3">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
+                                <label className="block text-[11px] tracking-[0.1em] text-[#4f6380] mb-1">TITLE</label>
                                 <input
-                                    className="w-full border rounded-md px-3 py-2 text-slate-900"
+                                    className={inputClass}
                                     value={editForm.title}
                                     onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+                                <label className="block text-[11px] tracking-[0.1em] text-[#4f6380] mb-1">CATEGORY</label>
                                 <input
-                                    className="w-full border rounded-md px-3 py-2 text-slate-900"
+                                    className={inputClass}
                                     value={editForm.category}
                                     onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Location</label>
+                                <label className="block text-[11px] tracking-[0.1em] text-[#4f6380] mb-1">LOCATION</label>
                                 <input
-                                    className="w-full border rounded-md px-3 py-2 text-slate-900"
+                                    className={inputClass}
                                     value={editForm.location}
                                     onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Asking Price (LKR)</label>
+                                <label className="block text-[11px] tracking-[0.1em] text-[#4f6380] mb-1">ASKING PRICE (LKR)</label>
                                 <input
                                     type="number"
-                                    className="w-full border rounded-md px-3 py-2 text-slate-900"
+                                    className={inputClass}
                                     value={editForm.askingPrice}
                                     onChange={(e) => setEditForm({ ...editForm, askingPrice: e.target.value })}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                                <label className="block text-[11px] tracking-[0.1em] text-[#4f6380] mb-1">DESCRIPTION</label>
                                 <textarea
                                     rows={3}
-                                    className="w-full border rounded-md px-3 py-2 text-slate-900"
+                                    className={inputClass}
                                     value={editForm.description}
                                     onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                                 />
                             </div>
                         </div>
-                        <p className="text-xs text-amber-600 mt-3">
+                        <p className="text-xs text-[#f5a623] mt-3">
                             ⚠️ Saving will reset the listing status to &quot;Pending Review&quot; for re-approval.
                         </p>
                         <div className="flex justify-end gap-3 mt-5">
                             <button
                                 onClick={() => { setEditingBusiness(null); setEditForm(null); }}
-                                className="px-4 py-2 rounded-md border text-slate-700 hover:bg-slate-100"
+                                className="px-4 py-2 rounded-lg border border-white/10 text-[#8092ab] hover:bg-white/[0.04] hover:text-[#c7d2e0] transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleEditSave}
                                 disabled={saving}
-                                className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                                className="px-4 py-2 rounded-lg bg-[#00cfa8] text-[#080c15] font-semibold hover:bg-[#00e6bc] disabled:opacity-50 transition-colors"
                             >
                                 {saving ? "Saving..." : "Save Changes"}
                             </button>
