@@ -27,4 +27,8 @@ public class SellerProfileResponseDto {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    private String accountStatus;
+    private Boolean emailVerified;
+    private LocalDateTime lastLoginAt;
 }

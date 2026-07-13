@@ -1,6 +1,7 @@
 package com.businessexchange.seller.service;
 
 import com.businessexchange.seller.dto.SellerProfileResponseDto;
+import com.businessexchange.seller.dto.UpdateSellerProfileRequest;
 import com.businessexchange.seller.entity.VerificationStatus;
 import com.businessexchange.seller.mapper.SellerMapper;
 import com.businessexchange.seller.repository.SellerProfileRepository;
@@ -9,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import com.businessexchange.common.exception.ResourceNotFoundException;
 import com.businessexchange.seller.entity.SellerProfile;
+import com.businessexchange.user.entity.User;
+import com.businessexchange.user.repository.UserRepository;
 
 import java.util.List;
 
@@ -18,6 +21,7 @@ public class SellerService {
 
     private final SellerProfileRepository sellerProfileRepository;
     private final SellerMapper sellerMapper;
+    private final UserRepository userRepository;
 
     public List<SellerProfileResponseDto> getAllSellers() {
         return sellerProfileRepository.findAll()
@@ -58,6 +62,33 @@ public class SellerService {
         sellerProfile.setVerificationStatus(VerificationStatus.REJECTED);
         SellerProfile saved = sellerProfileRepository.save(sellerProfile);
 
+        return sellerMapper.toDto(saved);
+    }
+
+    @Transactional
+    public SellerProfileResponseDto updateSellerProfile(Long userId, UpdateSellerProfileRequest request) {
+        SellerProfile sellerProfile = sellerProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Seller profile not found"));
+
+        sellerProfile.setNicOrPassport(request.getNicOrPassport());
+        sellerProfile.setAddress(request.getAddress());
+        sellerProfile.setBusinessOwnerType(request.getBusinessOwnerType());
+
+        User user = sellerProfile.getUser();
+
+        if (request.getPhoneNumber() != null) {
+            user.setPhone(request.getPhoneNumber());
+        }
+
+        if (request.getEmail() != null && !request.getEmail().equalsIgnoreCase(user.getEmail())) {
+            if (userRepository.existsByEmail(request.getEmail())) {
+                throw new IllegalArgumentException("Email already in use");
+            }
+            user.setEmail(request.getEmail());
+        }
+
+        userRepository.save(user);
+        SellerProfile saved = sellerProfileRepository.save(sellerProfile);
         return sellerMapper.toDto(saved);
     }
 }
