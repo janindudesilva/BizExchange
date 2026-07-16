@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiRequest, apiUpload } from "@/lib/api";
 
 // ── FileDropZone ──
@@ -106,11 +106,25 @@ function FileDropZone({
 // ── Main Page ──
 export default function CreateBusinessPage() {
   const [category, setCategory] = useState("");
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [documentFiles, setDocumentFiles] = useState<File[]>([]);
   const [financialFiles, setFinancialFiles] = useState<File[]>([]);
+
+  useEffect(() => {
+    // Note: using client-side mount fetch
+    async function fetchCats() {
+      try {
+        const response = await apiRequest<{ data: { id: number; name: string }[] }>("/categories");
+        setCategories(response.data || []);
+      } catch (err) {
+        console.error("Failed to load categories", err);
+      }
+    }
+    fetchCats();
+  }, []);
 
   const inputClass = "w-full bg-[#121c32] border border-white/10 text-[#c7d2e0] placeholder:text-[#4f6380] p-3 rounded-lg focus:outline-none focus:border-[#00cfa8]/50 transition-colors";
 
@@ -197,13 +211,11 @@ export default function CreateBusinessPage() {
                 required
             >
               <option value="">Select Business Category</option>
-              <option value="Restaurant">Restaurant</option>
-              <option value="Grocery Shop">Grocery Shop</option>
-              <option value="Salon">Salon</option>
-              <option value="Hotel">Hotel</option>
-              <option value="Online Business">Online Business</option>
-              <option value="Clothing Store">Clothing Store</option>
-              <option value="Pharmacy">Pharmacy</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.name}>
+                  {cat.name}
+                </option>
+              ))}
               <option value="Other">Other</option>
             </select>
 

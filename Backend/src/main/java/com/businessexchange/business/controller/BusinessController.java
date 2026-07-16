@@ -11,11 +11,17 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.List;
+import com.businessexchange.common.response.PageResponse;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 @RestController
 @RequestMapping("/api/businesses")
@@ -32,8 +38,18 @@ public class BusinessController {
     }
 
     @GetMapping
-    public ApiResponse<List<BusinessResponse>> getApprovedBusinesses() {
-        List<BusinessResponse> response = businessService.getApprovedBusinesses();
+    public ApiResponse<PageResponse<BusinessResponse>> getApprovedBusinesses(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) String location,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        PageResponse<BusinessResponse> response = businessService.searchBusinesses(
+                keyword, categoryId, minPrice, maxPrice, location, pageable);
         return ApiResponse.success("Approved businesses fetched successfully", response);
     }
 
@@ -89,5 +105,16 @@ public class BusinessController {
     public ApiResponse<List<BusinessFileResponse>> getFilesForBusiness(@PathVariable Long id) {
         List<BusinessFileResponse> files = businessFileService.getFilesForBusiness(id);
         return ApiResponse.success("Files fetched successfully", files);
+    }
+
+    @DeleteMapping("/{businessId}/files/{fileId}")
+    @PreAuthorize("hasRole('SELLER') or hasRole('ADMIN')")
+    public ApiResponse<Void> deleteFile(
+            @PathVariable Long businessId,
+            @PathVariable Long fileId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        businessFileService.deleteFile(businessId, fileId, userDetails.getUsername());
+        return ApiResponse.success("File deleted successfully", null);
     }
 }

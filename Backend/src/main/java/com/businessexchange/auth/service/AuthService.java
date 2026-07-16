@@ -5,6 +5,7 @@ import com.businessexchange.auth.security.JwtService;
 import com.businessexchange.buyer.entity.BuyerProfile;
 import com.businessexchange.buyer.repository.BuyerProfileRepository;
 import com.businessexchange.common.exception.DuplicateResourceException;
+import com.businessexchange.common.exception.ResourceNotFoundException;
 import com.businessexchange.seller.entity.SellerProfile;
 import com.businessexchange.seller.entity.VerificationStatus;
 import com.businessexchange.seller.repository.SellerProfileRepository;
@@ -18,7 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.Base64;
 
 @Service
 @RequiredArgsConstructor

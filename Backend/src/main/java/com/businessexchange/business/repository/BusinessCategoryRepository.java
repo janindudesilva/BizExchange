@@ -7,4 +7,6 @@ import java.util.Optional;
 
 public interface BusinessCategoryRepository extends JpaRepository<BusinessCategory, Long> {
     Optional<BusinessCategory> findByName(String name);
+    Optional<BusinessCategory> findByNameIgnoreCase(String name);
+    boolean existsByNameIgnoreCase(String name);
 }

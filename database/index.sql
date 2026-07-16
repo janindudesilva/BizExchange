@@ -10,6 +10,7 @@ CREATE INDEX idx_businesses_category_id ON businesses(category_id);
 CREATE INDEX idx_businesses_status ON businesses(status);
 CREATE INDEX idx_businesses_location ON businesses(location);
 CREATE INDEX idx_businesses_asking_price ON businesses(asking_price);
+CREATE INDEX idx_businesses_status_category_id ON businesses(status, category_id);
 
 CREATE INDEX idx_business_financials_business_id ON business_financials(business_id);
 

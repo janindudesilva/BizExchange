@@ -16,6 +16,7 @@ export interface Business {
   askingPrice: number;
   status: string;
   rejectionReason?: string;
+  isFavorited?: boolean;
 }
 
 export interface BusinessApiResponse {

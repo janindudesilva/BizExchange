@@ -13,10 +13,15 @@ import com.businessexchange.seller.repository.SellerProfileRepository;
 import com.businessexchange.user.entity.User;
 import com.businessexchange.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
+import com.businessexchange.common.response.PageResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -72,6 +77,32 @@ public class BusinessService {
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
+    }
+
+    public PageResponse<BusinessResponse> searchBusinesses(
+            String keyword,
+            Long categoryId,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            String location,
+            Pageable pageable
+    ) {
+        Specification<Business> spec = BusinessSpecification.filter(
+                keyword, categoryId, minPrice, maxPrice, location);
+
+        Page<Business> page = businessRepository.findAll(spec, pageable);
+
+        List<BusinessResponse> content = page.getContent().stream()
+                .map(this::mapToResponse)
+                .toList();
+
+        return new PageResponse<>(
+                content,
+                page.getNumber(),
+                page.getSize(),
+                page.getTotalPages(),
+                page.getTotalElements()
+        );
     }
 
     public BusinessResponse getBusinessById(Long id) {

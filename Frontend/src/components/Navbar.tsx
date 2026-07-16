@@ -59,9 +59,14 @@ export default function Navbar() {
                 )}
 
                 {token && role === "ADMIN" && (
-                    <Link href="/admin/dashboard" className="text-[#8092ab] hover:text-[#d8e4f0] transition-colors">
-                        Admin Dashboard
-                    </Link>
+                    <>
+                        <Link href="/admin/dashboard" className="text-[#8092ab] hover:text-[#d8e4f0] transition-colors">
+                            Admin Dashboard
+                        </Link>
+                        <Link href="/admin/categories" className="text-[#8092ab] hover:text-[#d8e4f0] transition-colors">
+                            Categories
+                        </Link>
+                    </>
                 )}
 
                 {!token && (

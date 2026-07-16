@@ -6,10 +6,14 @@ import com.businessexchange.business.entity.BusinessFile;
 import com.businessexchange.business.repository.BusinessFileRepository;
 import com.businessexchange.business.repository.BusinessRepository;
 import com.businessexchange.common.exception.ResourceNotFoundException;
+import com.businessexchange.user.entity.User;
+import com.businessexchange.user.entity.UserRole;
+import com.businessexchange.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,6 +27,7 @@ public class BusinessFileService {
 
     private final BusinessFileRepository fileRepository;
     private final BusinessRepository businessRepository;
+    private final UserRepository userRepository;
 
     @Transactional
     public List<BusinessFileResponse> uploadFiles(
@@ -81,5 +86,29 @@ public class BusinessFileService {
                 .stream()
                 .map(BusinessFileResponse::from)
                 .toList();
+    }
+
+    @Transactional
+    public void deleteFile(Long businessId, Long fileId, String callerEmail) {
+        BusinessFile file = fileRepository.findById(fileId)
+                .orElseThrow(() -> new ResourceNotFoundException("File not found"));
+
+        // Ensure the file actually belongs to the specified business
+        if (!file.getBusiness().getId().equals(businessId)) {
+            throw new IllegalArgumentException("File does not belong to the specified business");
+        }
+
+        // Verify caller is the owning seller OR an admin
+        User caller = userRepository.findByEmail(callerEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Caller user not found"));
+
+        boolean isAdmin = caller.getRole() == UserRole.ADMIN;
+        boolean isOwner = file.getBusiness().getSeller().getEmail().equals(callerEmail);
+
+        if (!isAdmin && !isOwner) {
+            throw new AccessDeniedException("You do not have permission to delete this file");
+        }
+
+        fileRepository.delete(file);
     }
 }
