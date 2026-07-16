@@ -30,12 +30,6 @@ export default function RegisterPage() {
       role === "buyer"
         ? {
             ...baseData,
-            preferredBusinessCategory: String(
-              form.get("preferredBusinessCategory")
-            ),
-            preferredLocation: String(form.get("preferredLocation")),
-            budgetMin: Number(form.get("budgetMin")),
-            budgetMax: Number(form.get("budgetMax")),
           }
         : {
             ...baseData,
@@ -112,12 +106,18 @@ export default function RegisterPage() {
             className={inputClass}
             required
           />
-
+          
           <input
+            type="tel"
             name="phone"
             placeholder="Phone"
             className={inputClass}
-          />
+            required
+            pattern="[0-9]{10}"
+            maxLength={10}
+            minLength={10}
+            title="Phone number must contain exactly 10 digits."
+           />
 
           <input
             name="password"
@@ -126,36 +126,6 @@ export default function RegisterPage() {
             className={inputClass}
             required
           />
-
-          {role === "buyer" && (
-            <>
-              <input
-                name="preferredBusinessCategory"
-                placeholder="Preferred Business Category"
-                className={inputClass}
-              />
-
-              <input
-                name="preferredLocation"
-                placeholder="Preferred Location"
-                className={inputClass}
-              />
-
-              <input
-                name="budgetMin"
-                type="number"
-                placeholder="Minimum Budget"
-                className={inputClass}
-              />
-
-              <input
-                name="budgetMax"
-                type="number"
-                placeholder="Maximum Budget"
-                className={inputClass}
-              />
-            </>
-          )}
 
           {role === "seller" && (
             <>

@@ -28,8 +28,9 @@ CREATE TYPE business_status AS ENUM (
 );
 
 CREATE TYPE inquiry_status AS ENUM (
-    'OPEN',
-    'RESPONDED',
+    'PENDING_APPROVAL',
+    'ACTIVE',
+    'REJECTED',
     'CLOSED'
 );
 

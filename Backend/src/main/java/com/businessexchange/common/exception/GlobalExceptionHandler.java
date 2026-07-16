@@ -47,6 +47,12 @@ public class GlobalExceptionHandler {
         return ApiResponse.error("You do not have permission to perform this action");
     }
 
+    @ExceptionHandler(InvalidInquiryStateException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<Object> handleInvalidInquiryState(InvalidInquiryStateException ex) {
+        return ApiResponse.error(ex.getMessage());
+    }
+
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
     public ApiResponse<Object> handleMaxUploadSize(MaxUploadSizeExceededException ex) {

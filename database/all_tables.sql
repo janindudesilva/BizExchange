@@ -225,7 +225,7 @@ CREATE TABLE inquiries (
 
     initial_message TEXT NOT NULL,
 
-    status inquiry_status NOT NULL DEFAULT 'OPEN',
+    status inquiry_status NOT NULL DEFAULT 'PENDING_APPROVAL',
 
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

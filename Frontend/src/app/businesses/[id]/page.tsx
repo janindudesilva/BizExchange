@@ -1,4 +1,5 @@
 import { SingleBusinessApiResponse, BusinessFile } from "@/types/business";
+import SendInquiryButton from "@/components/SendInquiryButton";
 
 const API = "http://localhost:8080/api";
 
@@ -78,9 +79,7 @@ export default async function BusinessDetailsPage({
                             <p className="text-[#8092ab] leading-7 text-sm">{business.description}</p>
                         </div>
 
-                        <button className="w-full bg-[#00cfa8] hover:bg-[#00e6bc] text-[#080c15] font-semibold py-3 px-6 rounded-xl transition-colors">
-                            Send Inquiry
-                        </button>
+                        <SendInquiryButton businessId={business.id} />
                     </div>
 
                     {/* Right — image gallery */}

@@ -38,7 +38,7 @@ const NAV_ITEMS: {
 }[] = [
     { label: "Overview", href: "/seller/dashboard" },
     { label: "My Listing", href: "/seller/businesses" },
-    { label: "Inquiries" },
+    { label: "Inquiries", href: "/seller/inquiries" },
     { label: "Offers" },
     { label: "Active Deals" },
     { label: "Payments" },

@@ -46,6 +46,12 @@ export default function Navbar() {
                     Businesses
                 </Link>
 
+                {token && role === "BUYER" && (
+                    <Link href="/businesses/my-inquiries" className="text-[#8092ab] hover:text-[#d8e4f0] transition-colors">
+                        My Inquiries
+                    </Link>
+                )}
+
                 {token && role === "SELLER" && (
                     <Link href="/seller/dashboard" className="text-[#8092ab] hover:text-[#d8e4f0] transition-colors">
                         Seller Dashboard
