@@ -10,9 +10,12 @@ import com.businessexchange.seller.entity.SellerProfile;
 import com.businessexchange.seller.entity.VerificationStatus;
 import com.businessexchange.seller.repository.SellerProfileRepository;
 import com.businessexchange.user.entity.AccountStatus;
+import com.businessexchange.user.entity.EmailVerificationToken;
 import com.businessexchange.user.entity.User;
 import com.businessexchange.user.entity.UserRole;
+import com.businessexchange.user.repository.EmailVerificationTokenRepository;
 import com.businessexchange.user.repository.UserRepository;
+import com.businessexchange.user.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -32,6 +35,8 @@ public class AuthService {
     private final SellerProfileRepository sellerProfileRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final EmailService emailService;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
 
     @Transactional
     public AuthResponse registerBuyer(RegisterBuyerRequest request) {
@@ -60,6 +65,11 @@ public class AuthService {
                 .build();
 
         buyerProfileRepository.save(profile);
+
+        // Create and send verification email
+        EmailVerificationToken verificationToken = emailService.createVerificationToken(savedUser);
+        String verificationLink = emailService.generateVerificationLink(verificationToken.getToken());
+        emailService.sendVerificationEmail(savedUser, verificationLink);
 
         String token = jwtService.generateToken(savedUser);
 
@@ -100,6 +110,11 @@ public class AuthService {
 
         sellerProfileRepository.save(profile);
 
+        // Create and send verification email
+        EmailVerificationToken verificationToken = emailService.createVerificationToken(savedUser);
+        String verificationLink = emailService.generateVerificationLink(verificationToken.getToken());
+        emailService.sendVerificationEmail(savedUser, verificationLink);
+
         String token = jwtService.generateToken(savedUser);
 
         return new AuthResponse(
@@ -131,5 +146,42 @@ public class AuthService {
                 user.getRole().name(),
                 token
         );
+    }
+
+    @Transactional
+    public void verifyEmail(String token) {
+        EmailVerificationToken verificationToken = emailVerificationTokenRepository.findByToken(token)
+                .orElseThrow(() -> new ResourceNotFoundException("Invalid verification token"));
+
+        if (verificationToken.isVerified()) {
+            throw new IllegalStateException("Email already verified");
+        }
+
+        if (verificationToken.isExpired()) {
+            throw new IllegalStateException("Verification token has expired");
+        }
+
+        User user = userRepository.findById(verificationToken.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        user.setEmailVerified(true);
+        userRepository.save(user);
+
+        verificationToken.setVerifiedAt(LocalDateTime.now());
+        emailVerificationTokenRepository.save(verificationToken);
+    }
+
+    @Transactional
+    public void resendVerificationEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (user.getEmailVerified()) {
+            throw new IllegalStateException("Email already verified");
+        }
+
+        EmailVerificationToken verificationToken = emailService.createVerificationToken(user);
+        String verificationLink = emailService.generateVerificationLink(verificationToken.getToken());
+        emailService.sendVerificationEmail(user, verificationLink);
     }
 }

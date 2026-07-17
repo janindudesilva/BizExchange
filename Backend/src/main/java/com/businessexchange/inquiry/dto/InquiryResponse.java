@@ -18,4 +18,7 @@ public class InquiryResponse {
     private String initialMessage;
     private String status;
     private LocalDateTime createdAt;
+    private Boolean hasReviewed;
+    private Double sellerRating;
+    private Long sellerReviewCount;
 }

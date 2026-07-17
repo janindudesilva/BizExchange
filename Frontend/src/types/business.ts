@@ -17,6 +17,9 @@ export interface Business {
   status: string;
   rejectionReason?: string;
   isFavorited?: boolean;
+  sellerId?: number;
+  averageRating?: number;
+  reviewCount?: number;
 }
 
 export interface BusinessApiResponse {

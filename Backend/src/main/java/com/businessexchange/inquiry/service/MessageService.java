@@ -9,6 +9,7 @@ import com.businessexchange.inquiry.entity.InquiryStatus;
 import com.businessexchange.inquiry.entity.Message;
 import com.businessexchange.inquiry.repository.InquiryRepository;
 import com.businessexchange.inquiry.repository.MessageRepository;
+import com.businessexchange.notification.service.NotificationService;
 import com.businessexchange.user.entity.User;
 import com.businessexchange.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class MessageService {
     private final MessageRepository messageRepository;
     private final InquiryRepository inquiryRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public MessageResponse sendMessage(Long inquiryId, String senderEmail, MessageSendRequest request) {
@@ -55,7 +57,17 @@ public class MessageService {
                 .isRead(false)
                 .build();
 
-        return mapToResponse(messageRepository.save(message));
+        Message saved = messageRepository.save(message);
+
+        // Notify the other party about the new message
+        Long recipientId = isBuyer ? inquiry.getSeller().getId() : inquiry.getBuyer().getId();
+        notificationService.createNotification(
+                recipientId,
+                "New Message",
+                String.format("You have a new message regarding: %s", inquiry.getBusiness().getTitle())
+        );
+
+        return mapToResponse(saved);
     }
 
     @Transactional

@@ -11,6 +11,9 @@ export interface Inquiry {
   initialMessage: string;
   status: InquiryStatus;
   createdAt: string;
+  hasReviewed?: boolean;
+  sellerRating?: number;
+  sellerReviewCount?: number;
 }
 
 export interface InquiryApiResponse {

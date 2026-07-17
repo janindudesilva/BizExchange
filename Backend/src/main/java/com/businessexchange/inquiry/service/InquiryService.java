@@ -12,6 +12,9 @@ import com.businessexchange.inquiry.entity.InquiryStatus;
 import com.businessexchange.inquiry.entity.Message;
 import com.businessexchange.inquiry.repository.InquiryRepository;
 import com.businessexchange.inquiry.repository.MessageRepository;
+import com.businessexchange.notification.service.NotificationService;
+import com.businessexchange.review.repository.ReviewRepository;
+import com.businessexchange.review.service.ReviewService;
 import com.businessexchange.user.entity.User;
 import com.businessexchange.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +37,9 @@ public class InquiryService {
     private final BusinessRepository businessRepository;
     private final UserRepository userRepository;
     private final MessageRepository messageRepository;
+    private final NotificationService notificationService;
+    private final ReviewService reviewService;
+    private final ReviewRepository reviewRepository;
 
     @Transactional
     public InquiryResponse createInquiry(String buyerEmail, InquiryCreateRequest request) {
@@ -72,6 +78,13 @@ public class InquiryService {
                 .build();
         messageRepository.save(opener);
 
+        // Notify seller about new inquiry
+        notificationService.createNotification(
+                business.getSeller().getId(),
+                "New Inquiry Received",
+                String.format("You have a new inquiry for your business: %s", business.getTitle())
+        );
+
         return mapToResponse(saved);
     }
 
@@ -85,7 +98,16 @@ public class InquiryService {
         }
 
         inquiry.setStatus(InquiryStatus.ACTIVE);
-        return mapToResponse(inquiryRepository.save(inquiry));
+        Inquiry saved = inquiryRepository.save(inquiry);
+
+        // Notify buyer that inquiry was approved
+        notificationService.createNotification(
+                inquiry.getBuyer().getId(),
+                "Inquiry Approved",
+                String.format("Your inquiry for %s has been approved. You can now start chatting!", inquiry.getBusiness().getTitle())
+        );
+
+        return mapToResponse(saved);
     }
 
     @Transactional
@@ -174,6 +196,15 @@ public class InquiryService {
     }
 
     private InquiryResponse mapToResponse(Inquiry inquiry) {
+        // Check if buyer has reviewed seller
+        Boolean hasReviewed = reviewRepository.findByBuyerIdAndSellerId(
+                inquiry.getBuyer().getId(), inquiry.getSeller().getId()
+        ).isPresent();
+
+        // Get seller rating information
+        Double sellerRating = reviewService.getSellerAverageRating(inquiry.getSeller().getId());
+        Long sellerReviewCount = reviewService.getSellerReviewCount(inquiry.getSeller().getId());
+
         return InquiryResponse.builder()
                 .id(inquiry.getId())
                 .businessId(inquiry.getBusiness().getId())
@@ -185,6 +216,9 @@ public class InquiryService {
                 .initialMessage(inquiry.getInitialMessage())
                 .status(inquiry.getStatus().name())
                 .createdAt(inquiry.getCreatedAt())
+                .hasReviewed(hasReviewed)
+                .sellerRating(sellerRating)
+                .sellerReviewCount(sellerReviewCount)
                 .build();
     }
 }

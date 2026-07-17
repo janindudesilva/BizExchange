@@ -5,6 +5,7 @@ import com.businessexchange.seller.dto.UpdateSellerProfileRequest;
 import com.businessexchange.seller.entity.VerificationStatus;
 import com.businessexchange.seller.mapper.SellerMapper;
 import com.businessexchange.seller.repository.SellerProfileRepository;
+import com.businessexchange.review.service.ReviewService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ public class SellerService {
     private final SellerProfileRepository sellerProfileRepository;
     private final SellerMapper sellerMapper;
     private final UserRepository userRepository;
+    private final ReviewService reviewService;
 
     public List<SellerProfileResponseDto> getAllSellers() {
         return sellerProfileRepository.findAll()
@@ -33,7 +35,17 @@ public class SellerService {
     public SellerProfileResponseDto getSellerByUserId(Long userId) {
         SellerProfile sellerProfile = sellerProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Seller profile not found"));
-        return sellerMapper.toDto(sellerProfile);
+        
+        SellerProfileResponseDto dto = sellerMapper.toDto(sellerProfile);
+        
+        // Add rating information
+        Double averageRating = reviewService.getSellerAverageRating(userId);
+        Long reviewCount = reviewService.getSellerReviewCount(userId);
+        
+        dto.setAverageRating(averageRating);
+        dto.setReviewCount(reviewCount);
+        
+        return dto;
     }
 
     public List<SellerProfileResponseDto> getPendingSellers() {

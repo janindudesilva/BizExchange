@@ -65,6 +65,13 @@ export default async function BusinessDetailsPage({
                         <p className="text-[#4f6380] text-sm mb-6">
                             📍 {business.location} &nbsp;·&nbsp; Listed by{" "}
                             <span className="font-medium text-[#8092ab]">{business.sellerName}</span>
+                            {business.averageRating !== undefined && business.averageRating !== null && (
+                                <span className="ml-2 flex items-center gap-1">
+                                    <span className="text-yellow-500">★</span>
+                                    <span className="font-medium text-[#d8e4f0]">{business.averageRating.toFixed(1)}</span>
+                                    <span className="text-[#4f6380]">({business.reviewCount} reviews)</span>
+                                </span>
+                            )}
                         </p>
 
                         <div className="bg-[#121c32] border border-white/5 rounded-2xl p-6 mb-6">

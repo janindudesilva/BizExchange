@@ -17,4 +17,8 @@ public class BusinessResponse {
     private BigDecimal askingPrice;
     private String status;
     private String rejectionReason;
+    private Boolean isFavorited;
+    private Long sellerId;
+    private Double averageRating;
+    private Long reviewCount;
 }

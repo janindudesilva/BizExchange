@@ -45,17 +45,22 @@ public class BusinessController {
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(required = false) String location,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "12") int size
+            @RequestParam(defaultValue = "12") int size,
+            @AuthenticationPrincipal UserDetails userDetails
     ) {
         Pageable pageable = PageRequest.of(page, size);
+        String buyerEmail = userDetails != null ? userDetails.getUsername() : null;
         PageResponse<BusinessResponse> response = businessService.searchBusinesses(
-                keyword, categoryId, minPrice, maxPrice, location, pageable);
+                keyword, categoryId, minPrice, maxPrice, location, pageable, buyerEmail);
         return ApiResponse.success("Approved businesses fetched successfully", response);
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<BusinessResponse> getBusinessById(@PathVariable Long id) {
-        BusinessResponse response = businessService.getBusinessById(id);
+    public ApiResponse<BusinessResponse> getBusinessById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String buyerEmail = userDetails != null ? userDetails.getUsername() : null;
+        BusinessResponse response = businessService.getBusinessById(id, buyerEmail);
         return ApiResponse.success("Business fetched successfully", response);
     }
 

@@ -13,4 +13,5 @@ public interface BusinessRepository extends JpaRepository<Business, Long>, JpaSp
     List<Business> findByStatus(BusinessStatus status);
     List<Business> findBySellerId(Long sellerId);
     boolean existsByCategoryId(Long categoryId);
+    long countByStatus(BusinessStatus status);
 }

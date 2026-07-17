@@ -7,10 +7,13 @@ import com.businessexchange.business.entity.*;
 import com.businessexchange.business.repository.*;
 import com.businessexchange.common.exception.ResourceNotFoundException;
 import com.businessexchange.common.exception.UnverifiedSellerException;
+import com.businessexchange.favorite.service.SavedBusinessService;
+import com.businessexchange.review.service.ReviewService;
 import com.businessexchange.seller.entity.SellerProfile;
 import com.businessexchange.seller.entity.VerificationStatus;
 import com.businessexchange.seller.repository.SellerProfileRepository;
 import com.businessexchange.user.entity.User;
+import com.businessexchange.user.entity.UserRole;
 import com.businessexchange.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -31,6 +34,8 @@ public class BusinessService {
     private final BusinessCategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final SellerProfileRepository sellerProfileRepository;
+    private final SavedBusinessService savedBusinessService;
+    private final ReviewService reviewService;
 
     @Transactional
     public BusinessResponse createBusiness(BusinessCreateRequest request) {
@@ -85,7 +90,8 @@ public class BusinessService {
             BigDecimal minPrice,
             BigDecimal maxPrice,
             String location,
-            Pageable pageable
+            Pageable pageable,
+            String buyerEmail
     ) {
         Specification<Business> spec = BusinessSpecification.filter(
                 keyword, categoryId, minPrice, maxPrice, location);
@@ -93,7 +99,7 @@ public class BusinessService {
         Page<Business> page = businessRepository.findAll(spec, pageable);
 
         List<BusinessResponse> content = page.getContent().stream()
-                .map(this::mapToResponse)
+                .map(business -> mapToResponse(business, buyerEmail))
                 .toList();
 
         return new PageResponse<>(
@@ -106,10 +112,14 @@ public class BusinessService {
     }
 
     public BusinessResponse getBusinessById(Long id) {
+        return getBusinessById(id, null);
+    }
+
+    public BusinessResponse getBusinessById(Long id, String buyerEmail) {
         Business business = businessRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Business not found"));
 
-        return mapToResponse(business);
+        return mapToResponse(business, buyerEmail);
     }
 
     @Transactional
@@ -149,6 +159,24 @@ public class BusinessService {
     }
 
     public BusinessResponse mapToResponse(Business business) {
+        return mapToResponse(business, null);
+    }
+
+    public BusinessResponse mapToResponse(Business business, String buyerEmail) {
+        Boolean isFavorited = null;
+        if (buyerEmail != null) {
+            try {
+                isFavorited = savedBusinessService.isBusinessSaved(buyerEmail, business.getId());
+            } catch (Exception e) {
+                isFavorited = false;
+            }
+        }
+
+        // Get seller rating information
+        Long sellerId = business.getSeller().getId();
+        Double averageRating = reviewService.getSellerAverageRating(sellerId);
+        Long reviewCount = reviewService.getSellerReviewCount(sellerId);
+
         return BusinessResponse.builder()
                 .id(business.getId())
                 .title(business.getTitle())
@@ -159,6 +187,10 @@ public class BusinessService {
                 .askingPrice(business.getAskingPrice())
                 .status(business.getStatus().name())
                 .rejectionReason(business.getRejectionReason())
+                .isFavorited(isFavorited)
+                .sellerId(sellerId)
+                .averageRating(averageRating)
+                .reviewCount(reviewCount)
                 .build();
     }
 

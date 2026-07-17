@@ -31,4 +31,7 @@ public class SellerProfileResponseDto {
     private String accountStatus;
     private Boolean emailVerified;
     private LocalDateTime lastLoginAt;
+
+    private Double averageRating;
+    private Long reviewCount;
 }

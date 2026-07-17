@@ -31,4 +31,16 @@ public class AuthController {
         AuthResponse response = authService.login(request);
         return ApiResponse.success("Login successful", response);
     }
+
+    @PostMapping("/verify-email")
+    public ApiResponse<Void> verifyEmail(@RequestParam String token) {
+        authService.verifyEmail(token);
+        return ApiResponse.success("Email verified successfully", null);
+    }
+
+    @PostMapping("/resend-verification")
+    public ApiResponse<Void> resendVerificationEmail(@RequestParam String email) {
+        authService.resendVerificationEmail(email);
+        return ApiResponse.success("Verification email sent successfully", null);
+    }
 }

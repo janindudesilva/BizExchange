@@ -481,6 +481,31 @@ CREATE TABLE notifications (
         ON DELETE CASCADE
 );
 
+CREATE TABLE reviews (
+    id BIGSERIAL PRIMARY KEY,
+
+    seller_id BIGINT NOT NULL,
+    buyer_id BIGINT NOT NULL,
+
+    rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    comment TEXT,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_review_seller
+        FOREIGN KEY (seller_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_review_buyer
+        FOREIGN KEY (buyer_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT uq_buyer_seller_review UNIQUE (buyer_id, seller_id)
+);
+
 CREATE TABLE audit_logs (
     id BIGSERIAL PRIMARY KEY,
 
@@ -517,3 +542,21 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 );
 
 CREATE INDEX IF NOT EXISTS idx_prt_token ON password_reset_tokens (token);
+
+-- ── Email Verification Tokens ──────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+    id         BIGSERIAL PRIMARY KEY,
+    user_id    BIGINT       NOT NULL,
+    token      VARCHAR(255) NOT NULL UNIQUE,
+    expires_at TIMESTAMP    NOT NULL,
+    verified_at TIMESTAMP,
+    created_at TIMESTAMP    NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_evt_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_evt_token ON email_verification_tokens (token);
+CREATE INDEX IF NOT EXISTS idx_evt_user ON email_verification_tokens (user_id);
