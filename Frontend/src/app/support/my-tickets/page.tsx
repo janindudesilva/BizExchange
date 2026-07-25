@@ -29,7 +29,7 @@ export default function MyTicketsPage() {
 
   const fetchMyTickets = async () => {
     try {
-      const response = await apiRequest<{ data: Ticket[] }>("/api/tickets/my");
+      const response = await apiRequest<{ data: Ticket[] }>("/tickets/my");
       setTickets(response.data || []);
     } catch (err) {
       console.error("Failed to fetch tickets", err);

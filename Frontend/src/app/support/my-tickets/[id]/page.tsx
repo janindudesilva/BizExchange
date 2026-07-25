@@ -44,7 +44,7 @@ export default function MyTicketDetailPage() {
 
   const fetchTicketDetails = async () => {
     try {
-      const response = await apiRequest<{ data: Ticket }>(`/api/tickets/${ticketId}`);
+      const response = await apiRequest<{ data: Ticket }>(`/tickets/${ticketId}`);
       setTicket(response.data);
     } catch (err) {
       console.error("Failed to fetch ticket", err);
@@ -56,7 +56,7 @@ export default function MyTicketDetailPage() {
 
   const fetchMessages = async () => {
     try {
-      const response = await apiRequest<{ data: TicketMessage[] }>(`/api/tickets/${ticketId}/messages`);
+      const response = await apiRequest<{ data: TicketMessage[] }>(`/tickets/${ticketId}/messages`);
       setMessages(response.data || []);
     } catch (err) {
       console.error("Failed to fetch messages", err);
@@ -66,7 +66,7 @@ export default function MyTicketDetailPage() {
   const handleReply = async () => {
     if (!replyText.trim()) return;
     try {
-      await apiRequest(`/api/tickets/${ticketId}/reply`, {
+      await apiRequest(`/tickets/${ticketId}/reply`, {
         method: "POST",
         body: JSON.stringify({ message: replyText }),
       });

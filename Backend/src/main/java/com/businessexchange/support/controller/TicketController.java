@@ -39,14 +39,21 @@ public class TicketController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('BUYER') or hasRole('SELLER')")
+    @PreAuthorize("hasAnyRole('BUYER', 'SELLER', 'SUPPORT_AGENT', 'ADMIN')")
     public ApiResponse<TicketResponse> getTicket(@PathVariable Long id) {
         TicketResponse ticket = ticketService.getTicketWithMessages(id);
         return ApiResponse.success("Fetched ticket", ticket);
     }
 
+    @GetMapping("/{id}/messages")
+    @PreAuthorize("hasAnyRole('BUYER', 'SELLER', 'SUPPORT_AGENT', 'ADMIN')")
+    public ApiResponse<List<TicketMessageResponse>> getMessages(@PathVariable Long id) {
+        List<TicketMessageResponse> messages = ticketService.getTicketMessages(id);
+        return ApiResponse.success("Fetched ticket messages", messages);
+    }
+
     @PostMapping("/{id}/reply")
-    @PreAuthorize("hasRole('BUYER') or hasRole('SELLER')")
+    @PreAuthorize("hasAnyRole('BUYER', 'SELLER', 'SUPPORT_AGENT', 'ADMIN')")
     public ApiResponse<TicketMessageResponse> reply(
             @PathVariable Long id,
             @Valid @RequestBody ReplyRequest request) {

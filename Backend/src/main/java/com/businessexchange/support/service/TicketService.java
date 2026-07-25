@@ -154,6 +154,16 @@ public class TicketService {
         return mapToResponse(ticket);
     }
 
+    public List<TicketMessageResponse> getTicketMessages(Long ticketId) {
+        if (!ticketRepository.existsById(ticketId)) {
+            throw new ResourceNotFoundException("Ticket not found");
+        }
+        return messageRepository.findByTicketIdOrderByCreatedAtAsc(ticketId)
+                .stream()
+                .map(this::mapToMessageResponse)
+                .toList();
+    }
+
     private TicketResponse mapToResponse(SupportTicket ticket) {
         return TicketResponse.builder()
                 .id(ticket.getId())

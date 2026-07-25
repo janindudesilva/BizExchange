@@ -29,7 +29,7 @@ export default function AgentDashboardPage() {
 
   const fetchAssignedTickets = async () => {
     try {
-      const response = await apiRequest<{ data: Ticket[] }>("/api/agent/tickets/assigned");
+      const response = await apiRequest<{ data: Ticket[] }>("/agent/tickets/assigned");
       setTickets(response.data || []);
     } catch (err) {
       console.error("Failed to fetch tickets", err);
