@@ -12,6 +12,7 @@ import com.businessexchange.review.service.ReviewService;
 import com.businessexchange.seller.entity.SellerProfile;
 import com.businessexchange.seller.entity.VerificationStatus;
 import com.businessexchange.seller.repository.SellerProfileRepository;
+import com.businessexchange.support.dto.LimitedBusinessView;
 import com.businessexchange.user.entity.User;
 import com.businessexchange.user.entity.UserRole;
 import com.businessexchange.user.repository.UserRepository;
@@ -199,5 +200,16 @@ public class BusinessService {
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
+    }
+
+    public LimitedBusinessView getLimitedView(Long businessId) {
+        Business business = businessRepository.findById(businessId)
+                .orElseThrow(() -> new ResourceNotFoundException("Business not found"));
+        return LimitedBusinessView.builder()
+                .id(business.getId())
+                .title(business.getTitle())
+                .sellerName(business.getSeller().getFullName())
+                .status(business.getStatus())
+                .build();
     }
 }

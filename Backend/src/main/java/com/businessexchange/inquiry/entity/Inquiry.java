@@ -35,6 +35,7 @@ public class Inquiry {
     @Column(name = "initial_message", nullable = false, columnDefinition = "TEXT")
     private String initialMessage;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private InquiryStatus status = InquiryStatus.PENDING_APPROVAL;

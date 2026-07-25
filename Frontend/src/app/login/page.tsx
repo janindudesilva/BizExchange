@@ -28,6 +28,7 @@ export default function LoginPage() {
       localStorage.setItem("token", result.data.token);
       localStorage.setItem("role", result.data.role);
       localStorage.setItem("userId", String(result.data.userId));
+      window.dispatchEvent(new Event("auth-change"));
 
       setMessage(result.message);
 
@@ -35,6 +36,10 @@ export default function LoginPage() {
         router.push("/admin/dashboard");
       } else if (result.data.role === "SELLER") {
         router.push("/seller/dashboard");
+      } else if (result.data.role === "SUPPORT_AGENT") {
+        router.push("/agent/dashboard");
+      } else if (result.data.role === "VERIFICATION_OFFICER") {
+        router.push("/officer/dashboard");
       } else {
         router.push("/businesses");
       }

@@ -1,5 +1,14 @@
 const API_BASE_URL = "http://localhost:8080/api";
 
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+    this.name = "ApiError";
+  }
+}
+
 export async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -16,10 +25,16 @@ export async function apiRequest<T>(
     },
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data.message || "Something went wrong");
+    if (response.status === 401 && typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("role");
+      localStorage.removeItem("userId");
+      window.dispatchEvent(new Event("auth-change"));
+    }
+    throw new ApiError(data.message || "Something went wrong", response.status);
   }
 
   return data;
@@ -43,8 +58,15 @@ export async function apiUpload<T>(
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(
-      (data as { message?: string }).message || "File upload failed"
+    if (response.status === 401 && typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("role");
+      localStorage.removeItem("userId");
+      window.dispatchEvent(new Event("auth-change"));
+    }
+    throw new ApiError(
+      (data as { message?: string }).message || "File upload failed",
+      response.status
     );
   }
 

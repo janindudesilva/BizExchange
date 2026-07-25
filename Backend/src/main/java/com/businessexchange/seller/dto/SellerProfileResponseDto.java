@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Builder
 public class SellerProfileResponseDto {
 
-    private Long id;              // seller profile id
+    private Long id; // seller profile id
 
     private Long userId;
     private String fullName;
@@ -24,6 +24,11 @@ public class SellerProfileResponseDto {
     private String businessOwnerType;
 
     private VerificationStatus verificationStatus;
+
+    private String reviewNotes;
+    private Boolean flaggedSuspicious;
+    private String reviewedByName;
+    private String rejectionReason;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

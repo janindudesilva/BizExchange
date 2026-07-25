@@ -1,18 +1,20 @@
 package com.businessexchange.seller.service;
 
+import com.businessexchange.notification.service.NotificationService;
 import com.businessexchange.seller.dto.SellerProfileResponseDto;
 import com.businessexchange.seller.dto.UpdateSellerProfileRequest;
 import com.businessexchange.seller.entity.VerificationStatus;
 import com.businessexchange.seller.mapper.SellerMapper;
 import com.businessexchange.seller.repository.SellerProfileRepository;
 import com.businessexchange.review.service.ReviewService;
+import com.businessexchange.user.entity.UserRole;
+import com.businessexchange.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import com.businessexchange.common.exception.ResourceNotFoundException;
 import com.businessexchange.seller.entity.SellerProfile;
 import com.businessexchange.user.entity.User;
-import com.businessexchange.user.repository.UserRepository;
 
 import java.util.List;
 
@@ -24,6 +26,7 @@ public class SellerService {
     private final SellerMapper sellerMapper;
     private final UserRepository userRepository;
     private final ReviewService reviewService;
+    private final NotificationService notificationService;
 
     public List<SellerProfileResponseDto> getAllSellers() {
         return sellerProfileRepository.findAll()
@@ -67,14 +70,46 @@ public class SellerService {
     }
 
     @Transactional
-    public SellerProfileResponseDto rejectSeller(Long sellerId) {
+    public SellerProfileResponseDto rejectSeller(Long sellerId, String reason) {
         SellerProfile sellerProfile = sellerProfileRepository.findById(sellerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Seller profile not found"));
 
         sellerProfile.setVerificationStatus(VerificationStatus.REJECTED);
+        sellerProfile.setRejectionReason(reason);
         SellerProfile saved = sellerProfileRepository.save(sellerProfile);
 
         return sellerMapper.toDto(saved);
+    }
+
+    @Transactional
+    public SellerProfileResponseDto addReviewNotes(Long sellerId, String notes) {
+        SellerProfile sellerProfile = sellerProfileRepository.findById(sellerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Seller profile not found"));
+
+        sellerProfile.setReviewNotes(notes);
+        SellerProfile saved = sellerProfileRepository.save(sellerProfile);
+
+        return sellerMapper.toDto(saved);
+    }
+
+    @Transactional
+    public void flagSuspicious(Long sellerId, String reason) {
+        SellerProfile sellerProfile = sellerProfileRepository.findById(sellerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Seller profile not found"));
+
+        sellerProfile.setFlaggedSuspicious(true);
+        sellerProfileRepository.save(sellerProfile);
+
+        // Notify all admins
+        List<User> admins = userRepository.findByRole(UserRole.ADMIN);
+        for (User admin : admins) {
+            notificationService.notify(
+                    admin,
+                    "SUSPICIOUS_SELLER",
+                    "Seller flagged as suspicious: " + sellerProfile.getUser().getFullName(),
+                    "/admin/sellers/" + sellerId
+            );
+        }
     }
 
     @Transactional

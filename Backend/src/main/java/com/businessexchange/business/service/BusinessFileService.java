@@ -111,4 +111,11 @@ public class BusinessFileService {
 
         fileRepository.delete(file);
     }
+
+    public List<BusinessFileResponse> findAllDocumentsBySellerId(Long sellerId) {
+        return fileRepository.findDocumentsBySellerId(sellerId)
+                .stream()
+                .map(BusinessFileResponse::from)
+                .toList();
+    }
 }

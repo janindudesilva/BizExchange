@@ -262,6 +262,32 @@ export default function AdminDashboardPage() {
           </button>
         </div>
 
+        <div className="bg-[#121c32] border border-white/5 p-6 rounded-2xl">
+          <div className="text-[11px] tracking-[0.1em] text-[#4f6380] mb-3">STAFF</div>
+          <h2 className="text-lg font-semibold mb-2 text-[#d8e4f0]">Manage Staff</h2>
+          <p className="text-[#8092ab] text-sm mb-5">
+            Create and manage staff accounts.
+          </p>
+          <button
+              onClick={() => router.push("/admin/staff")}
+              className="bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors text-sm">
+            Manage Staff
+          </button>
+        </div>
+
+        <div className="bg-[#121c32] border border-white/5 p-6 rounded-2xl">
+          <div className="text-[11px] tracking-[0.1em] text-[#4f6380] mb-3">SUPPORT</div>
+          <h2 className="text-lg font-semibold mb-2 text-[#d8e4f0]">Support Tickets</h2>
+          <p className="text-[#8092ab] text-sm mb-5">
+            View and manage support tickets.
+          </p>
+          <button
+              onClick={() => router.push("/admin/tickets")}
+              className="bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors text-sm">
+            View Tickets
+          </button>
+        </div>
+
       </div>
     </main>
   );

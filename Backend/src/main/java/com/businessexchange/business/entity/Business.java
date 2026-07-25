@@ -52,6 +52,7 @@ public class Business {
     @Column(name = "reason_for_selling", columnDefinition = "TEXT")
     private String reasonForSelling;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private BusinessStatus status = BusinessStatus.PENDING_REVIEW;

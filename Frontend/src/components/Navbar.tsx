@@ -24,8 +24,20 @@ export default function Navbar() {
     const [showNotifications, setShowNotifications] = useState(false);
 
     useEffect(() => {
-        setToken(localStorage.getItem("token"));
-        setRole(localStorage.getItem("role"));
+        const handleAuthChange = () => {
+            setToken(localStorage.getItem("token"));
+            setRole(localStorage.getItem("role"));
+        };
+
+        handleAuthChange();
+
+        window.addEventListener("auth-change", handleAuthChange);
+        window.addEventListener("storage", handleAuthChange);
+
+        return () => {
+            window.removeEventListener("auth-change", handleAuthChange);
+            window.removeEventListener("storage", handleAuthChange);
+        };
     }, []);
 
     useEffect(() => {
@@ -33,23 +45,44 @@ export default function Navbar() {
             fetchUnreadCount();
             const interval = setInterval(fetchUnreadCount, 30000); // Poll every 30 seconds
             return () => clearInterval(interval);
+        } else {
+            setUnreadCount(0);
+            setNotifications([]);
         }
     }, [token]);
 
     const fetchUnreadCount = async () => {
+        if (!localStorage.getItem("token")) return;
         try {
             const response = await apiRequest<{ data: number }>("/notifications/unread/count");
             setUnreadCount(response.data || 0);
-        } catch (err) {
+        } catch (err: any) {
+            if (err?.status === 401 || err?.message?.includes("Unauthorized")) {
+                setToken(null);
+                setRole(null);
+                setUnreadCount(0);
+                return;
+            }
+            // Suppress noise if backend is offline/restarting
+            if (err instanceof TypeError && err.message === "Failed to fetch") {
+                return;
+            }
             console.error("Failed to fetch unread count", err);
         }
     };
 
     const fetchNotifications = async () => {
+        if (!localStorage.getItem("token")) return;
         try {
             const response = await apiRequest<{ data: Notification[] }>("/notifications");
             setNotifications(response.data || []);
-        } catch (err) {
+        } catch (err: any) {
+            if (err?.status === 401 || err?.message?.includes("Unauthorized")) {
+                setToken(null);
+                setRole(null);
+                setNotifications([]);
+                return;
+            }
             console.error("Failed to fetch notifications", err);
         }
     };
@@ -88,7 +121,10 @@ export default function Navbar() {
 
         setToken(null);
         setRole(null);
+        setUnreadCount(0);
+        setNotifications([]);
 
+        window.dispatchEvent(new Event("auth-change"));
         router.push("/");
     }
 
@@ -135,6 +171,18 @@ export default function Navbar() {
                             Categories
                         </Link>
                     </>
+                )}
+
+                {token && role === "VERIFICATION_OFFICER" && (
+                    <Link href="/officer/dashboard" className="text-[#8092ab] hover:text-[#d8e4f0] transition-colors">
+                        Officer Dashboard
+                    </Link>
+                )}
+
+                {token && role === "SUPPORT_AGENT" && (
+                    <Link href="/agent/dashboard" className="text-[#8092ab] hover:text-[#d8e4f0] transition-colors">
+                        Agent Dashboard
+                    </Link>
                 )}
 
                 {token && (

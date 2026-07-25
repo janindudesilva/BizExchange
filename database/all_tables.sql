@@ -48,13 +48,23 @@ CREATE TABLE seller_profiles (
 
     verification_status verification_status NOT NULL DEFAULT 'PENDING',
 
+    reviewed_by BIGINT,
+    review_notes TEXT,
+    flagged_suspicious BOOLEAN DEFAULT FALSE,
+    rejection_reason TEXT,
+
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_seller_user
         FOREIGN KEY (user_id)
         REFERENCES users(id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_seller_reviewed_by
+        FOREIGN KEY (reviewed_by)
+        REFERENCES users(id)
+        ON DELETE SET NULL
 );
 
 CREATE TABLE seller_verifications (
@@ -560,3 +570,51 @@ CREATE TABLE IF NOT EXISTS email_verification_tokens (
 
 CREATE INDEX IF NOT EXISTS idx_evt_token ON email_verification_tokens (token);
 CREATE INDEX IF NOT EXISTS idx_evt_user ON email_verification_tokens (user_id);
+
+-- ── Support Tickets ───────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS support_tickets (
+    id         BIGSERIAL PRIMARY KEY,
+    created_by BIGINT       NOT NULL,
+    assigned_to BIGINT,
+    subject    VARCHAR(200) NOT NULL,
+    description TEXT        NOT NULL,
+    status     ticket_status NOT NULL DEFAULT 'OPEN',
+    created_at TIMESTAMP    NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP    NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_ticket_created_by
+        FOREIGN KEY (created_by)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_ticket_assigned_to
+        FOREIGN KEY (assigned_to)
+        REFERENCES users(id)
+        ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_ticket_created_by ON support_tickets (created_by);
+CREATE INDEX IF NOT EXISTS idx_ticket_assigned_to ON support_tickets (assigned_to);
+CREATE INDEX IF NOT EXISTS idx_ticket_status ON support_tickets (status);
+
+-- ── Ticket Messages ───────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS ticket_messages (
+    id         BIGSERIAL PRIMARY KEY,
+    ticket_id  BIGINT       NOT NULL,
+    sender_id  BIGINT       NOT NULL,
+    message    TEXT         NOT NULL,
+    created_at TIMESTAMP    NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_message_ticket
+        FOREIGN KEY (ticket_id)
+        REFERENCES support_tickets(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_message_sender
+        FOREIGN KEY (sender_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_message_ticket ON ticket_messages (ticket_id);
+CREATE INDEX IF NOT EXISTS idx_message_sender ON ticket_messages (sender_id);

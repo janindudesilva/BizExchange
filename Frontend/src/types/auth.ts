@@ -1,4 +1,4 @@
-export type UserRole = "BUYER" | "SELLER" | "ADMIN" | "SUPPORT_AGENT";
+export type UserRole = "BUYER" | "SELLER" | "ADMIN" | "SUPPORT_AGENT" | "VERIFICATION_OFFICER";
 
 export interface AuthResponse {
   success: boolean;

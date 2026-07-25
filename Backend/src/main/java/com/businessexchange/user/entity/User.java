@@ -34,10 +34,12 @@ public class User {
     @Column(name = "role", nullable = false)
     private UserRole role;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private AccountStatus status = AccountStatus.ACTIVE;
 
+    @Builder.Default
     @Column(name="email_verified", nullable = false)
     private Boolean emailVerified = false;
 

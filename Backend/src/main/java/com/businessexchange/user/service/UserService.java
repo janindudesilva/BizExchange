@@ -1,6 +1,7 @@
 package com.businessexchange.user.service;
 
 import com.businessexchange.common.exception.ResourceNotFoundException;
+import com.businessexchange.support.dto.LimitedUserView;
 import com.businessexchange.user.dto.ChangePasswordRequest;
 import com.businessexchange.user.dto.UpdateProfileRequest;
 import com.businessexchange.user.dto.UserResponse;
@@ -58,6 +59,18 @@ public class UserService {
                 .role(user.getRole().name())
                 .status(user.getStatus().name())
                 .emailVerified(user.getEmailVerified())
+                .build();
+    }
+
+    public LimitedUserView getLimitedView(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return LimitedUserView.builder()
+                .id(user.getId())
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .status(user.getStatus())
                 .build();
     }
 }

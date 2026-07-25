@@ -25,6 +25,14 @@ public class NotificationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
+        return notify(user, title, message, null);
+    }
+
+    public NotificationResponse notify(User user, String title, String message, String link) {
+        if (user == null) {
+            return null;
+        }
+
         Notification notification = Notification.builder()
                 .user(user)
                 .title(title)
@@ -35,6 +43,10 @@ public class NotificationService {
         notificationRepository.save(notification);
 
         return mapToResponse(notification);
+    }
+
+    public NotificationResponse notify(User user, String title, String message) {
+        return notify(user, title, message, null);
     }
 
     public List<NotificationResponse> getUserNotifications(String userEmail) {
