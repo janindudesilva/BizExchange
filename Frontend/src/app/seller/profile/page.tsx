@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { apiRequest } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import { apiRequest, apiUpload } from "@/lib/api";
+import SellerSidebar from "@/components/SellerSidebar";
 
 type VerificationStatus = "PENDING" | "APPROVED" | "REJECTED";
 
@@ -97,6 +98,7 @@ export default function SellerProfilePage() {
     const [error, setError] = useState<string | null>(null);
 
     const [isEditing, setIsEditing] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const [form, setForm] = useState<EditFormState | null>(null);
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
@@ -175,97 +177,51 @@ export default function SellerProfilePage() {
     }
 
     return (
-        <div
-            className="min-h-screen bg-[#080c15] text-[#c7d2e0] flex"
-            style={{
-                fontFamily:
-                    'ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace',
-            }}
-        >
-            {/* ── Sidebar ── */}
-            <aside className="w-[248px] shrink-0 fixed inset-y-0 left-0 bg-[#0d1220] border-r border-white/5 flex flex-col justify-between">
-                <div>
-                    <div className="px-6 py-6 border-b border-white/5">
-                        <div className="text-[#00cfa8] font-bold tracking-wide text-lg leading-tight">
-                            BIZEXCHANGE
-                        </div>
-                        <div className="text-[#4f6380] text-[11px] tracking-[0.15em] mt-1">
-                            SELLER PORTAL
-                        </div>
-                    </div>
-
-                    <nav className="py-3">
-                        {NAV_ITEMS.map((item) => {
-                            const content = (
-                                <div
-                                    className="flex items-center justify-between px-6 py-3 text-sm border-l-2 border-transparent text-[#8092ab] hover:text-[#c7d2e0] hover:bg-white/[0.02] transition-colors"
-                                >
-                                    <span>{item.label}</span>
-                                    {item.badge ? (
-                                        <span className="text-[10px] bg-[#f5a623] text-[#1a1204] rounded-full w-4 h-4 flex items-center justify-center leading-none">
-                        {item.badge}
-                      </span>
-                                    ) : null}
-                                </div>
-                            );
-
-                            return item.href ? (
-                                <Link key={item.label} href={item.href}>
-                                    {content}
-                                </Link>
-                            ) : (
-                                <div key={item.label} className="cursor-default">
-                                    {content}
-                                </div>
-                            );
-                        })}
-                    </nav>
-                </div>
-
-                <div className="px-6 py-5 border-t border-white/5">
-                    <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-[#057a6b] text-white text-xs font-semibold flex items-center justify-center shrink-0">
-                            {initials(profile?.fullName)}
-                        </div>
-                        <div className="min-w-0">
-                            <div className="text-sm text-[#d8e4f0] truncate">
-                                {profile?.fullName ?? "Seller"}
-                            </div>
-                            <div className="text-[11px] text-[#4f6380] truncate">
-                                {verificationLabel(verificationStatus)}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </aside>
+        <div className="min-h-screen bg-[#080c15] text-[#c7d2e0] flex relative overflow-x-hidden">
+            <SellerSidebar
+                sidebarOpen={sidebarOpen}
+                setSidebarOpen={setSidebarOpen}
+                profile={profile}
+            />
 
             {/* ── Main column ── */}
-            <div className="flex-1 ml-[248px] flex flex-col">
-                <header className="flex items-center justify-between px-10 py-5 border-b border-white/5">
-                    <div>
-                        <div className="text-[11px] tracking-[0.15em] text-[#4f6380]">
-                            ACCOUNT
-                        </div>
-                        <div className="text-sm text-[#8092ab] mt-1">
-                            Profile &amp; Verification
+            <div className="flex-1 ml-0 lg:ml-[248px] flex flex-col min-w-0">
+                <header className="flex items-center justify-between px-4 sm:px-8 lg:px-10 py-4 sm:py-5 border-b border-white/5 gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <button
+                            onClick={() => setSidebarOpen(true)}
+                            className="lg:hidden p-2 text-[#8092ab] hover:text-white rounded-lg border border-white/10 shrink-0"
+                            aria-label="Open menu"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
+                        <div className="min-w-0">
+                            <div className="text-[11px] tracking-[0.15em] text-[#4f6380]">
+                                ACCOUNT
+                            </div>
+                            <div className="text-xs sm:text-sm text-[#8092ab] mt-0.5 truncate">
+                                Profile &amp; Verification
+                            </div>
                         </div>
                     </div>
 
                     {loaded && !error && profile && !isEditing && (
                         <button
                             onClick={startEditing}
-                            className="text-sm bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors"
+                            className="text-xs sm:text-sm bg-[#00cfa8] text-[#080c15] px-3.5 sm:px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors min-h-[40px] shrink-0"
                         >
                             Edit Profile
                         </button>
                     )}
                 </header>
 
-                <main className="flex-1 px-10 py-8 max-w-7xl mx-auto w-full">
-                    <h1 className="text-2xl font-bold text-[#d8e4f0] tracking-wide">
+                <main className="flex-1 px-4 sm:px-8 lg:px-10 py-6 sm:py-8 max-w-7xl mx-auto w-full">
+                    <h1 className="text-xl sm:text-2xl font-bold text-[#d8e4f0] tracking-wide">
                         PROFILE &amp; VERIFICATION
                     </h1>
-                    <p className="text-[#4f6380] text-sm mt-2 mb-8">
+                    <p className="text-[#4f6380] text-xs sm:text-sm mt-1.5 mb-6 sm:mb-8">
                         Your seller account details on file with BizExchange
                     </p>
 

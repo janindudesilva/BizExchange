@@ -8,7 +8,13 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "saved_businesses")
+@Table(name = "saved_businesses", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_saved_business_buyer_business", columnNames = {"buyer_id", "business_id"})
+}, indexes = {
+        @Index(name = "idx_saved_businesses_buyer_id", columnList = "buyer_id"),
+        @Index(name = "idx_saved_businesses_business_id", columnList = "business_id"),
+        @Index(name = "idx_saved_businesses_saved_at", columnList = "saved_at DESC")
+})
 @Getter
 @Setter
 @NoArgsConstructor

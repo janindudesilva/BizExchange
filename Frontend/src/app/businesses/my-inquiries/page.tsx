@@ -111,8 +111,8 @@ export default function MyInquiriesPage() {
     };
 
     return (
-        <main className="max-w-4xl mx-auto px-6 py-10">
-            <h1 className="text-2xl font-bold text-[#d8e4f0] mb-6">My Inquiries</h1>
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#d8e4f0] mb-6">My Inquiries</h1>
 
             {loading && <p className="text-[#4f6380]">Loading inquiries...</p>}
             {error && <p className="text-red-400">{error}</p>}
@@ -128,28 +128,28 @@ export default function MyInquiriesPage() {
                 {inquiries.map((inquiry) => (
                     <div
                         key={inquiry.id}
-                        className="bg-[#121c32] border border-white/5 rounded-2xl p-5"
+                        className="bg-[#121c32] border border-white/5 rounded-2xl p-4 sm:p-5"
                     >
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                             <Link
                                 href={`/businesses/${inquiry.businessId}`}
-                                className="text-[#d8e4f0] font-semibold hover:text-[#00cfa8]"
+                                className="text-[#d8e4f0] font-semibold hover:text-[#00cfa8] break-words"
                             >
                                 {inquiry.businessTitle}
                             </Link>
-                            {statusBadge(inquiry.status)}
+                            <div className="shrink-0">{statusBadge(inquiry.status)}</div>
                         </div>
                         <p className="text-[#8092ab] text-sm mb-2">
                             To <span className="text-[#d8e4f0]">{inquiry.sellerName}</span>
                             {inquiry.sellerRating !== undefined && inquiry.sellerRating !== null && (
-                                <span className="ml-2 flex items-center gap-1">
+                                <span className="ml-2 inline-flex items-center gap-1">
                                     <span className="text-yellow-500">★</span>
                                     <span className="text-[#d8e4f0]">{inquiry.sellerRating.toFixed(1)}</span>
                                     <span className="text-[#4f6380]">({inquiry.sellerReviewCount})</span>
                                 </span>
                             )}
                         </p>
-                        <p className="text-[#8092ab] text-sm leading-6">{inquiry.initialMessage}</p>
+                        <p className="text-[#8092ab] text-sm leading-6 break-words">{inquiry.initialMessage}</p>
                         <p className="text-[#4f6380] text-xs mt-3 mb-4">
                             {new Date(inquiry.createdAt).toLocaleString()}
                         </p>
@@ -161,7 +161,7 @@ export default function MyInquiriesPage() {
                         ) : (
                             <Link
                                 href={`/inquiries/${inquiry.id}`}
-                                className="inline-block text-sm text-[#00cfa8] hover:underline"
+                                className="inline-flex items-center text-sm text-[#00cfa8] hover:underline min-h-[40px]"
                             >
                                 {inquiry.status === "ACTIVE" ? "Open chat →" : "View conversation →"}
                             </Link>

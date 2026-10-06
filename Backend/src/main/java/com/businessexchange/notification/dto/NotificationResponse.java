@@ -9,6 +9,7 @@ public class NotificationResponse {
     private Long id;
     private String title;
     private String message;
+    private String link;
     private String status;
     private String createdAt;
     private String readAt;

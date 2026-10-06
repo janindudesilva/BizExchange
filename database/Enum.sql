@@ -59,6 +59,7 @@ CREATE TYPE payment_status AS ENUM (
 CREATE TYPE ticket_status AS ENUM (
     'OPEN',
     'IN_PROGRESS',
+    'ESCALATED',
     'RESOLVED',
     'CLOSED'
 );

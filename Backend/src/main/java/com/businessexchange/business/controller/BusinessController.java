@@ -32,8 +32,15 @@ public class BusinessController {
     private final BusinessFileService businessFileService;
 
     @PostMapping
-    public ApiResponse<BusinessResponse> createBusiness(@Valid @RequestBody BusinessCreateRequest request) {
-        BusinessResponse response = businessService.createBusiness(request);
+    @PreAuthorize("hasRole('SELLER') or hasRole('ADMIN')")
+    public ApiResponse<BusinessResponse> createBusiness(
+            @Valid @RequestBody BusinessCreateRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            throw new org.springframework.security.access.AccessDeniedException("Not authenticated");
+        }
+        String callerEmail = userDetails.getUsername();
+        BusinessResponse response = businessService.createBusiness(request, callerEmail);
         return ApiResponse.success("Business submitted for review", response);
     }
 
@@ -48,7 +55,9 @@ public class BusinessController {
             @RequestParam(defaultValue = "12") int size,
             @AuthenticationPrincipal UserDetails userDetails
     ) {
-        Pageable pageable = PageRequest.of(page, size);
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(Math.max(1, size), 100);
+        Pageable pageable = PageRequest.of(safePage, safeSize);
         String buyerEmail = userDetails != null ? userDetails.getUsername() : null;
         PageResponse<BusinessResponse> response = businessService.searchBusinesses(
                 keyword, categoryId, minPrice, maxPrice, location, pageable, buyerEmail);
@@ -66,8 +75,14 @@ public class BusinessController {
 
     @GetMapping("/seller/{sellerId}")
     @PreAuthorize("hasRole('SELLER') or hasRole('ADMIN')")
-    public ApiResponse<List<BusinessResponse>> getBusinessesBySeller(@PathVariable Long sellerId) {
-        List<BusinessResponse> response = businessService.getBusinessesBySeller(sellerId);
+    public ApiResponse<List<BusinessResponse>> getBusinessesBySeller(
+            @PathVariable Long sellerId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            throw new org.springframework.security.access.AccessDeniedException("Not authenticated");
+        }
+        String callerEmail = userDetails.getUsername();
+        List<BusinessResponse> response = businessService.getBusinessesBySeller(sellerId, callerEmail);
         return ApiResponse.success("Seller businesses fetched successfully", response);
     }
 
@@ -75,15 +90,20 @@ public class BusinessController {
     @PreAuthorize("hasRole('SELLER') or hasRole('ADMIN')")
     public ApiResponse<BusinessResponse> updateBusiness(
             @PathVariable Long id,
-            @Valid @RequestBody BusinessUpdateRequest request) {
-        BusinessResponse response = businessService.updateBusiness(id, request);
+            @Valid @RequestBody BusinessUpdateRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String callerEmail = userDetails != null ? userDetails.getUsername() : null;
+        BusinessResponse response = businessService.updateBusiness(id, request, callerEmail);
         return ApiResponse.success("Business updated successfully", response);
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('SELLER') or hasRole('ADMIN')")
-    public ApiResponse<Void> deleteBusiness(@PathVariable Long id) {
-        businessService.deleteBusiness(id);
+    public ApiResponse<Void> deleteBusiness(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String callerEmail = userDetails != null ? userDetails.getUsername() : null;
+        businessService.deleteBusiness(id, callerEmail);
         return ApiResponse.success("Business deleted successfully", null);
     }
 
@@ -95,20 +115,28 @@ public class BusinessController {
             @PathVariable Long id,
             @RequestParam(value = "images", required = false) List<MultipartFile> images,
             @RequestParam(value = "documents", required = false) List<MultipartFile> documents,
-            @RequestParam(value = "financialReports", required = false) List<MultipartFile> financialReports
+            @RequestParam(value = "financialReports", required = false) List<MultipartFile> financialReports,
+            @AuthenticationPrincipal UserDetails userDetails
     ) throws IOException {
-        List<BusinessFileResponse> files = businessFileService.uploadFiles(id, images, documents, financialReports);
+        String callerEmail = userDetails != null ? userDetails.getUsername() : null;
+        List<BusinessFileResponse> files = businessFileService.uploadFiles(id, images, documents, financialReports, callerEmail);
         return ApiResponse.success("Files uploaded successfully", files);
     }
 
     @GetMapping("/files/{fileId}")
-    public ResponseEntity<byte[]> serveFile(@PathVariable Long fileId) {
-        return businessFileService.serveFile(fileId);
+    public ResponseEntity<byte[]> serveFile(
+            @PathVariable Long fileId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String callerEmail = userDetails != null ? userDetails.getUsername() : null;
+        return businessFileService.serveFile(fileId, callerEmail);
     }
 
     @GetMapping("/{id}/files")
-    public ApiResponse<List<BusinessFileResponse>> getFilesForBusiness(@PathVariable Long id) {
-        List<BusinessFileResponse> files = businessFileService.getFilesForBusiness(id);
+    public ApiResponse<List<BusinessFileResponse>> getFilesForBusiness(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String callerEmail = userDetails != null ? userDetails.getUsername() : null;
+        List<BusinessFileResponse> files = businessFileService.getFilesForBusiness(id, callerEmail);
         return ApiResponse.success("Files fetched successfully", files);
     }
 

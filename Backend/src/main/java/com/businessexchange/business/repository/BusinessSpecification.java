@@ -21,14 +21,16 @@ public class BusinessSpecification {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            // Always only search for APPROVED listings
+            // Always only search for APPROVED listings that are verified
             predicates.add(cb.equal(root.get("status"), BusinessStatus.APPROVED));
+            predicates.add(cb.equal(root.get("verificationStatus"), com.businessexchange.seller.entity.VerificationStatus.APPROVED));
 
             if (keyword != null && !keyword.trim().isEmpty()) {
-                String likePattern = "%" + keyword.trim().toLowerCase() + "%";
+                String sanitized = escapeLike(keyword.trim().toLowerCase());
+                String likePattern = "%" + sanitized + "%";
                 predicates.add(cb.or(
-                        cb.like(cb.lower(root.get("title")), likePattern),
-                        cb.like(cb.lower(root.get("description")), likePattern)
+                        cb.like(cb.lower(root.get("title")), likePattern, '\\'),
+                        cb.like(cb.lower(root.get("description")), likePattern, '\\')
                 ));
             }
 
@@ -45,11 +47,16 @@ public class BusinessSpecification {
             }
 
             if (location != null && !location.trim().isEmpty()) {
-                String likePattern = "%" + location.trim().toLowerCase() + "%";
-                predicates.add(cb.like(cb.lower(root.get("location")), likePattern));
+                String sanitized = escapeLike(location.trim().toLowerCase());
+                String likePattern = "%" + sanitized + "%";
+                predicates.add(cb.like(cb.lower(root.get("location")), likePattern, '\\'));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    private static String escapeLike(String input) {
+        return input.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 }

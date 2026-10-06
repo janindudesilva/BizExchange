@@ -19,6 +19,11 @@ public class SellerProfile {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Version
+    @Builder.Default
+    @Column(name = "version")
+    private Long version = 0L;
+
     @OneToOne
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;

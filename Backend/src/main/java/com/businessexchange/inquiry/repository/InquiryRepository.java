@@ -10,9 +10,21 @@ import java.util.Optional;
 
 @Repository
 public interface InquiryRepository extends JpaRepository<Inquiry, Long> {
+
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"business", "buyer", "seller"})
     List<Inquiry> findByBuyerIdOrderByCreatedAtDesc(Long buyerId);
+
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"business", "buyer", "seller"})
     List<Inquiry> findBySellerIdOrderByCreatedAtDesc(Long sellerId);
+
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"business", "buyer", "seller"})
     Optional<Inquiry> findByBusinessIdAndBuyerId(Long businessId, Long buyerId);
+
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"business", "buyer", "seller"})
     List<Inquiry> findByBuyerIdAndSellerId(Long buyerId, Long sellerId);
+
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"business", "buyer", "seller"})
+    java.util.Optional<Inquiry> findById(Long id);
+
     long countByStatus(InquiryStatus status);
 }

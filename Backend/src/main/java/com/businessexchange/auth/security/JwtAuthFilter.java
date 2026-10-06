@@ -18,11 +18,11 @@ import java.io.IOException;
 
 @Component
 @RequiredArgsConstructor
+@lombok.extern.slf4j.Slf4j
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsServiceImpl userDetailsService;
-    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -38,20 +38,35 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         jwt = authHeader.substring(7);
-        userEmail = jwtService.extractEmail(jwt);
+
+        try {
+            userEmail = jwtService.extractEmail(jwt);
+        } catch (Exception e) {
+            log.debug("JWT token invalid or expired: {}", e.getMessage());
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-            User dbUser = userRepository.findByEmail(userEmail).orElse(null);
-
-            if (dbUser != null && jwtService.isTokenValid(jwt, dbUser)) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities()
-                );
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+            try {
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+                if (userDetails instanceof UserPrincipal userPrincipal) {
+                    if (jwtService.isTokenValid(jwt, userPrincipal.getUser())
+                            && userDetails.isAccountNonLocked()
+                            && userDetails.isEnabled()) {
+                        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities()
+                        );
+                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authToken);
+                    } else if (!userDetails.isAccountNonLocked() || !userDetails.isEnabled()) {
+                        log.warn("User {} account is suspended, deleted, or unverified; rejecting JWT authentication", userEmail);
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("Could not authenticate user from JWT: {}", e.getMessage());
             }
         }
         filterChain.doFilter(request, response);

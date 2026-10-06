@@ -1,5 +1,6 @@
 package com.businessexchange.business.entity;
 
+import com.businessexchange.seller.entity.VerificationStatus;
 import com.businessexchange.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -8,7 +9,14 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "businesses")
+@Table(name = "businesses", indexes = {
+        @Index(name = "idx_business_seller_id", columnList = "seller_id"),
+        @Index(name = "idx_business_category_id", columnList = "category_id"),
+        @Index(name = "idx_business_status_verification", columnList = "status, verification_status"),
+        @Index(name = "idx_business_created_at", columnList = "created_at DESC"),
+        @Index(name = "idx_business_price", columnList = "asking_price"),
+        @Index(name = "idx_business_location", columnList = "location")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,6 +27,11 @@ public class Business {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Version
+    @Builder.Default
+    @Column(name = "version")
+    private Long version = 0L;
 
     @ManyToOne
     @JoinColumn(name = "seller_id", nullable = false)
@@ -56,6 +69,11 @@ public class Business {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private BusinessStatus status = BusinessStatus.PENDING_REVIEW;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "verification_status", nullable = false)
+    private VerificationStatus verificationStatus = VerificationStatus.PENDING;
 
     @ManyToOne
     @JoinColumn(name = "approved_by")

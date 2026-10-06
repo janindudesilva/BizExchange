@@ -9,7 +9,7 @@ import com.businessexchange.seller.repository.SellerProfileRepository;
 import com.businessexchange.review.service.ReviewService;
 import com.businessexchange.user.entity.UserRole;
 import com.businessexchange.user.repository.UserRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import com.businessexchange.common.exception.ResourceNotFoundException;
@@ -38,16 +38,16 @@ public class SellerService {
     public SellerProfileResponseDto getSellerByUserId(Long userId) {
         SellerProfile sellerProfile = sellerProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Seller profile not found"));
-        
+
         SellerProfileResponseDto dto = sellerMapper.toDto(sellerProfile);
-        
+
         // Add rating information
         Double averageRating = reviewService.getSellerAverageRating(userId);
         Long reviewCount = reviewService.getSellerReviewCount(userId);
-        
+
         dto.setAverageRating(averageRating);
         dto.setReviewCount(reviewCount);
-        
+
         return dto;
     }
 
@@ -56,6 +56,12 @@ public class SellerService {
                 .stream()
                 .map(sellerMapper::toDto)
                 .toList();
+    }
+
+    public SellerProfileResponseDto getSellerById(Long sellerId) {
+        SellerProfile sellerProfile = sellerProfileRepository.findById(sellerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Seller profile not found"));
+        return sellerMapper.toDto(sellerProfile);
     }
 
     @Transactional
@@ -107,8 +113,7 @@ public class SellerService {
                     admin,
                     "SUSPICIOUS_SELLER",
                     "Seller flagged as suspicious: " + sellerProfile.getUser().getFullName(),
-                    "/admin/sellers/" + sellerId
-            );
+                    "/admin/sellers/" + sellerId);
         }
     }
 
@@ -139,5 +144,3 @@ public class SellerService {
         return sellerMapper.toDto(saved);
     }
 }
-
-

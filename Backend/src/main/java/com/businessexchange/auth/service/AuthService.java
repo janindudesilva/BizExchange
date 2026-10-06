@@ -17,6 +17,7 @@ import com.businessexchange.user.repository.EmailVerificationTokenRepository;
 import com.businessexchange.user.repository.UserRepository;
 import com.businessexchange.user.service.EmailService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -78,8 +79,7 @@ public class AuthService {
                 savedUser.getFullName(),
                 savedUser.getEmail(),
                 savedUser.getRole().name(),
-                token
-        );
+                token);
     }
 
     @Transactional
@@ -122,16 +122,23 @@ public class AuthService {
                 savedUser.getFullName(),
                 savedUser.getEmail(),
                 savedUser.getRole().name(),
-                token
-        );
+                token);
     }
 
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Invalid email or password"));
+                .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new RuntimeException("Invalid email or password");
+            throw new BadCredentialsException("Invalid email or password");
+        }
+
+        if (user.getStatus() == AccountStatus.SUSPENDED) {
+            throw new org.springframework.security.authentication.LockedException("Your account has been suspended. Please contact support.");
+        }
+
+        if (user.getStatus() == AccountStatus.DELETED) {
+            throw new BadCredentialsException("Account has been closed");
         }
 
         user.setLastLoginAt(LocalDateTime.now());
@@ -144,8 +151,7 @@ public class AuthService {
                 user.getFullName(),
                 user.getEmail(),
                 user.getRole().name(),
-                token
-        );
+                token);
     }
 
     @Transactional
@@ -173,11 +179,14 @@ public class AuthService {
 
     @Transactional
     public void resendVerificationEmail(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        java.util.Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isEmpty()) {
+            return; // Prevent user enumeration
+        }
 
-        if (user.getEmailVerified()) {
-            throw new IllegalStateException("Email already verified");
+        User user = userOpt.get();
+        if (Boolean.TRUE.equals(user.getEmailVerified())) {
+            return; // Don't leak whether email is already verified
         }
 
         EmailVerificationToken verificationToken = emailService.createVerificationToken(user);

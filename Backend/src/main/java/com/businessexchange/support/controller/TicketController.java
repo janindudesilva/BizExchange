@@ -1,6 +1,7 @@
 package com.businessexchange.support.controller;
 
 import com.businessexchange.common.response.ApiResponse;
+import com.businessexchange.common.util.AuthenticationUtil;
 import com.businessexchange.support.dto.ReplyRequest;
 import com.businessexchange.support.dto.TicketCreateRequest;
 import com.businessexchange.support.dto.TicketMessageResponse;
@@ -9,8 +10,6 @@ import com.businessexchange.support.service.TicketService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,6 +20,7 @@ import java.util.List;
 public class TicketController {
 
     private final TicketService ticketService;
+    private final AuthenticationUtil authenticationUtil;
 
     @PostMapping
     @PreAuthorize("hasRole('BUYER') or hasRole('SELLER')")
@@ -41,14 +41,16 @@ public class TicketController {
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('BUYER', 'SELLER', 'SUPPORT_AGENT', 'ADMIN')")
     public ApiResponse<TicketResponse> getTicket(@PathVariable Long id) {
-        TicketResponse ticket = ticketService.getTicketWithMessages(id);
+        Long userId = getCurrentUserId();
+        TicketResponse ticket = ticketService.getTicketWithMessages(id, userId);
         return ApiResponse.success("Fetched ticket", ticket);
     }
 
     @GetMapping("/{id}/messages")
     @PreAuthorize("hasAnyRole('BUYER', 'SELLER', 'SUPPORT_AGENT', 'ADMIN')")
     public ApiResponse<List<TicketMessageResponse>> getMessages(@PathVariable Long id) {
-        List<TicketMessageResponse> messages = ticketService.getTicketMessages(id);
+        Long userId = getCurrentUserId();
+        List<TicketMessageResponse> messages = ticketService.getTicketMessages(id, userId);
         return ApiResponse.success("Fetched ticket messages", messages);
     }
 
@@ -63,7 +65,6 @@ public class TicketController {
     }
 
     private Long getCurrentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return Long.parseLong(authentication.getName());
+        return authenticationUtil.getCurrentUserId();
     }
 }

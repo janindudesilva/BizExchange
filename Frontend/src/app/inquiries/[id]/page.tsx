@@ -25,9 +25,15 @@ export default function InquiryThreadPage() {
     const [sending, setSending] = useState(false);
     const [acting, setActing] = useState(false);
 
-    const currentUserId = typeof window !== "undefined" ? Number(localStorage.getItem("userId")) : null;
-    const role = typeof window !== "undefined" ? localStorage.getItem("role") : null;
+    const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+    const [role, setRole] = useState<string | null>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const storedId = localStorage.getItem("userId");
+        if (storedId) setCurrentUserId(Number(storedId));
+        setRole(localStorage.getItem("role"));
+    }, []);
 
     useEffect(() => {
         fetchThread();

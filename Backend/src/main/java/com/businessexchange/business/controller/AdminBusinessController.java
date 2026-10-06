@@ -20,9 +20,10 @@ public class AdminBusinessController {
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<BusinessResponse> approveBusiness(
             @PathVariable Long businessId,
-            @RequestParam Long adminId
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails
     ) {
-        BusinessResponse response = adminBusinessService.approveBusiness(businessId, adminId);
+        String adminEmail = userDetails.getUsername();
+        BusinessResponse response = adminBusinessService.approveBusiness(businessId, adminEmail);
         return ApiResponse.success("Business approved successfully", response);
     }
 
@@ -30,10 +31,11 @@ public class AdminBusinessController {
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<BusinessResponse> rejectBusiness(
             @PathVariable Long businessId,
-            @RequestParam Long adminId,
-            @RequestParam String reason
+            @RequestParam String reason,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails
     ) {
-        BusinessResponse response = adminBusinessService.rejectBusiness(businessId, adminId, reason);
+        String adminEmail = userDetails.getUsername();
+        BusinessResponse response = adminBusinessService.rejectBusiness(businessId, adminEmail, reason);
         return ApiResponse.success("Business rejected successfully", response);
     }
 

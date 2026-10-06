@@ -36,12 +36,10 @@ export default function PendingBusinessesPage() {
     fetchPending();
   }, []);
 
-  const adminId = typeof window !== "undefined" ? localStorage.getItem("userId") : null;
-
   const handleApprove = async (id: number) => {
     setActionLoadingId(id);
     try {
-      await apiRequest(`/admin/businesses/${id}/approve?adminId=${adminId}`, {
+      await apiRequest(`/admin/businesses/${id}/approve`, {
         method: "PUT",
       });
       setBusinesses((prev) => prev.filter((b) => b.id !== id));
@@ -59,7 +57,7 @@ export default function PendingBusinessesPage() {
     setActionLoadingId(id);
     try {
       await apiRequest(
-        `/admin/businesses/${id}/reject?adminId=${adminId}&reason=${encodeURIComponent(reason)}`,
+        `/admin/businesses/${id}/reject?reason=${encodeURIComponent(reason)}`,
         { method: "PUT" }
       );
       setBusinesses((prev) => prev.filter((b) => b.id !== id));

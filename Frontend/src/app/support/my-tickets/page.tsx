@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api";
 
 interface Ticket {
   id: number;
+  ticketNumber: string;
   createdById: number;
   createdByName: string;
   createdByEmail: string;
@@ -14,6 +16,7 @@ interface Ticket {
   subject: string;
   description: string;
   status: string;
+  priority: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -23,8 +26,13 @@ export default function MyTicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [isSeller, setIsSeller] = useState(false);
+
   useEffect(() => {
     fetchMyTickets();
+    if (typeof window !== "undefined" && localStorage.getItem("role") === "SELLER") {
+      setIsSeller(true);
+    }
   }, []);
 
   const fetchMyTickets = async () => {
@@ -55,8 +63,37 @@ export default function MyTicketsPage() {
     }
   };
 
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "LOW":
+        return "bg-[#10b981]/20 text-[#10b981]";
+      case "MEDIUM":
+        return "bg-[#f59e0b]/20 text-[#f59e0b]";
+      case "HIGH":
+        return "bg-[#ef4444]/20 text-[#ef4444]";
+      case "URGENT":
+        return "bg-[#ef4444]/40 text-[#ef4444]";
+      default:
+        return "bg-[#8092ab]/20 text-[#8092ab]";
+    }
+  };
+
   return (
     <main className="max-w-6xl mx-auto px-6 py-10">
+      {isSeller && (
+        <div className="mb-6 bg-[#00cfa8]/10 border border-[#00cfa8]/20 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="text-xs text-[#c7d2e0]">
+            Looking for the Seller Portal view? Manage tickets directly within the dedicated Seller Support section.
+          </div>
+          <Link
+            href="/seller/support"
+            className="text-xs text-[#00cfa8] font-bold hover:underline shrink-0"
+          >
+            Go to Seller Support &rarr;
+          </Link>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-2xl font-bold text-[#d8e4f0] tracking-wide">MY TICKETS</h1>
@@ -79,8 +116,9 @@ export default function MyTicketsPage() {
           <table className="w-full">
             <thead className="bg-[#0d1220]">
               <tr>
-                <th className="text-left p-4 text-[#8092ab] text-sm font-medium">ID</th>
+                <th className="text-left p-4 text-[#8092ab] text-sm font-medium">Ticket #</th>
                 <th className="text-left p-4 text-[#8092ab] text-sm font-medium">Subject</th>
+                <th className="text-left p-4 text-[#8092ab] text-sm font-medium">Priority</th>
                 <th className="text-left p-4 text-[#8092ab] text-sm font-medium">Assigned To</th>
                 <th className="text-left p-4 text-[#8092ab] text-sm font-medium">Status</th>
                 <th className="text-left p-4 text-[#8092ab] text-sm font-medium">Created</th>
@@ -90,8 +128,13 @@ export default function MyTicketsPage() {
             <tbody>
               {tickets.map((ticket) => (
                 <tr key={ticket.id} className="border-t border-white/5">
-                  <td className="p-4 text-[#d8e4f0]">#{ticket.id}</td>
+                  <td className="p-4 text-[#d8e4f0]">{ticket.ticketNumber}</td>
                   <td className="p-4 text-[#d8e4f0]">{ticket.subject}</td>
+                  <td className="p-4">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${getPriorityColor(ticket.priority)}`}>
+                      {ticket.priority}
+                    </span>
+                  </td>
                   <td className="p-4 text-[#c7d2e0]">{ticket.assignedToName || "Unassigned"}</td>
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(ticket.status)}`}>

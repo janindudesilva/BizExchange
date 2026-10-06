@@ -7,7 +7,12 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "support_tickets")
+@Table(name = "support_tickets", indexes = {
+        @Index(name = "idx_ticket_created_by", columnList = "created_by"),
+        @Index(name = "idx_ticket_assigned_to", columnList = "assigned_to"),
+        @Index(name = "idx_ticket_status", columnList = "status"),
+        @Index(name = "idx_ticket_created_at", columnList = "created_at DESC")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -18,6 +23,13 @@ public class SupportTicket {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Version
+    @Column(name = "version")
+    private Long version;
+
+    @Column(name = "ticket_number", unique = true, nullable = false, length = 20)
+    private String ticketNumber;
 
     @ManyToOne
     @JoinColumn(name = "created_by", nullable = false)
@@ -37,6 +49,11 @@ public class SupportTicket {
     @Enumerated(EnumType.STRING)
     private TicketStatus status = TicketStatus.OPEN;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "priority", nullable = false)
+    private TicketPriority priority = TicketPriority.MEDIUM;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -51,10 +68,20 @@ public class SupportTicket {
         if (status == null) {
             status = TicketStatus.OPEN;
         }
+        if (priority == null) {
+            priority = TicketPriority.MEDIUM;
+        }
+        if (ticketNumber == null) {
+            ticketNumber = generateTicketNumber();
+        }
     }
 
     @PreUpdate
     public void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    private String generateTicketNumber() {
+        return "TCK-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 }

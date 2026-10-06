@@ -8,7 +8,10 @@ import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "business_files")
+@Table(name = "business_files", indexes = {
+        @Index(name = "idx_business_files_business_id", columnList = "business_id"),
+        @Index(name = "idx_business_files_type", columnList = "file_type")
+})
 @Getter
 @Setter
 @NoArgsConstructor

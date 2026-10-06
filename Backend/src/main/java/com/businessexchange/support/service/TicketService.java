@@ -5,6 +5,7 @@ import com.businessexchange.notification.service.NotificationService;
 import com.businessexchange.support.dto.*;
 import com.businessexchange.support.entity.SupportTicket;
 import com.businessexchange.support.entity.TicketMessage;
+import com.businessexchange.support.entity.TicketPriority;
 import com.businessexchange.support.entity.TicketStatus;
 import com.businessexchange.support.repository.SupportTicketRepository;
 import com.businessexchange.support.repository.TicketMessageRepository;
@@ -36,6 +37,7 @@ public class TicketService {
                 .subject(request.getSubject())
                 .description(request.getDescription())
                 .status(TicketStatus.OPEN)
+                .priority(request.getPriority() != null ? request.getPriority() : TicketPriority.MEDIUM)
                 .build();
 
         SupportTicket saved = ticketRepository.save(ticket);
@@ -63,6 +65,22 @@ public class TicketService {
                 .toList();
     }
 
+    private void checkTicketAccess(SupportTicket ticket, User user) {
+        if (user.getRole() == UserRole.ADMIN) {
+            return;
+        }
+        if (user.getRole() == UserRole.SUPPORT_AGENT) {
+            // Support agents can access tickets assigned to them or unassigned tickets
+            if (ticket.getAssignedTo() == null || ticket.getAssignedTo().getId().equals(user.getId())) {
+                return;
+            }
+        }
+        if (ticket.getCreatedBy().getId().equals(user.getId())) {
+            return;
+        }
+        throw new org.springframework.security.access.AccessDeniedException("You are not authorized to access this support ticket");
+    }
+
     @Transactional
     public TicketMessageResponse reply(Long ticketId, String message, Long senderId) {
         SupportTicket ticket = ticketRepository.findById(ticketId)
@@ -70,6 +88,8 @@ public class TicketService {
 
         User sender = userRepository.findById(senderId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        checkTicketAccess(ticket, sender);
 
         TicketMessage ticketMessage = TicketMessage.builder()
                 .ticket(ticket)
@@ -98,8 +118,19 @@ public class TicketService {
 
     @Transactional
     public TicketResponse updateStatus(Long ticketId, TicketStatus status) {
+        return updateStatus(ticketId, status, null);
+    }
+
+    @Transactional
+    public TicketResponse updateStatus(Long ticketId, TicketStatus status, Long agentId) {
         SupportTicket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found"));
+
+        if (agentId != null) {
+            User agent = userRepository.findById(agentId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Agent not found"));
+            checkTicketAccess(ticket, agent);
+        }
 
         ticket.setStatus(status);
         SupportTicket saved = ticketRepository.save(ticket);
@@ -109,8 +140,19 @@ public class TicketService {
 
     @Transactional
     public void escalateToAdmin(Long ticketId, String reason) {
+        escalateToAdmin(ticketId, reason, null);
+    }
+
+    @Transactional
+    public void escalateToAdmin(Long ticketId, String reason, Long agentId) {
         SupportTicket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found"));
+
+        if (agentId != null) {
+            User agent = userRepository.findById(agentId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Agent not found"));
+            checkTicketAccess(ticket, agent);
+        }
 
         ticket.setStatus(TicketStatus.ESCALATED);
         ticketRepository.save(ticket);
@@ -135,6 +177,10 @@ public class TicketService {
         User agent = userRepository.findById(agentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Agent not found"));
 
+        if (agent.getRole() != UserRole.SUPPORT_AGENT && agent.getRole() != UserRole.ADMIN) {
+            throw new IllegalArgumentException("Assigned user must be a SUPPORT_AGENT or ADMIN");
+        }
+
         ticket.setAssignedTo(agent);
         ticket.setStatus(TicketStatus.IN_PROGRESS);
         ticketRepository.save(ticket);
@@ -154,9 +200,28 @@ public class TicketService {
         return mapToResponse(ticket);
     }
 
+    public TicketResponse getTicketWithMessages(Long ticketId, Long userId) {
+        SupportTicket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found"));
+        if (userId != null) {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+            checkTicketAccess(ticket, user);
+        }
+        return mapToResponse(ticket);
+    }
+
     public List<TicketMessageResponse> getTicketMessages(Long ticketId) {
-        if (!ticketRepository.existsById(ticketId)) {
-            throw new ResourceNotFoundException("Ticket not found");
+        return getTicketMessages(ticketId, null);
+    }
+
+    public List<TicketMessageResponse> getTicketMessages(Long ticketId, Long userId) {
+        SupportTicket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found"));
+        if (userId != null) {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+            checkTicketAccess(ticket, user);
         }
         return messageRepository.findByTicketIdOrderByCreatedAtAsc(ticketId)
                 .stream()
@@ -167,6 +232,7 @@ public class TicketService {
     private TicketResponse mapToResponse(SupportTicket ticket) {
         return TicketResponse.builder()
                 .id(ticket.getId())
+                .ticketNumber(ticket.getTicketNumber())
                 .createdById(ticket.getCreatedBy().getId())
                 .createdByName(ticket.getCreatedBy().getFullName())
                 .createdByEmail(ticket.getCreatedBy().getEmail())
@@ -175,6 +241,7 @@ public class TicketService {
                 .subject(ticket.getSubject())
                 .description(ticket.getDescription())
                 .status(ticket.getStatus())
+                .priority(ticket.getPriority())
                 .createdAt(ticket.getCreatedAt())
                 .updatedAt(ticket.getUpdatedAt())
                 .build();

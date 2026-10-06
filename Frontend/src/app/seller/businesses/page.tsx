@@ -2,7 +2,23 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { apiRequest, apiUpload } from "@/lib/api";
+import SellerSidebar from "@/components/SellerSidebar";
+
+const NAV_ITEMS: { label: string; href?: string }[] = [
+    { label: "Overview", href: "/seller/dashboard" },
+    { label: "My Listing", href: "/seller/businesses" },
+    { label: "Inquiries", href: "/seller/inquiries" },
+    { label: "Offers", href: "/seller/inquiries" },
+    { label: "Active Deals", href: "/seller/inquiries" },
+    { label: "Support", href: "/support/my-tickets" },
+];
+
+function initials(name: string | undefined): string {
+    if (!name) return "?";
+    return name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
+}
 
 interface Business {
     id: number;
@@ -13,6 +29,7 @@ interface Business {
     location: string;
     askingPrice: number;
     status: string;
+    verificationStatus?: string;
     rejectionReason?: string;
 }
 
@@ -53,6 +70,15 @@ function fileTypeLabel(type: string): string {
 }
 
 export default function MyListingsPage() {
+    const pathname = usePathname();
+
+    // Sidebar / user state
+    const [profile, setProfile] = useState<{ fullName: string; verificationStatus: string } | null>(null);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    // Page state
     const [businesses, setBusinesses] = useState<Business[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -75,10 +101,34 @@ export default function MyListingsPage() {
     const docInputRef = useRef<HTMLInputElement>(null);
     const finInputRef = useRef<HTMLInputElement>(null);
 
+    // Close user dropdown on outside click
+    useEffect(() => {
+        function handleClickOutside(e: MouseEvent) {
+            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+                setMenuOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
     useEffect(() => {
         fetchMyBusinesses();
         fetchCats();
+        const userId = localStorage.getItem("userId");
+        if (userId) {
+            apiRequest<{ fullName: string; verificationStatus: string }>(`/seller/profile/${userId}`)
+                .then(setProfile)
+                .catch(() => {});
+        }
     }, []);
+
+    function logout() {
+        localStorage.removeItem("token");
+        localStorage.removeItem("role");
+        localStorage.removeItem("userId");
+        window.location.href = "/login";
+    }
 
     const fetchCats = async () => {
         try {
@@ -125,6 +175,16 @@ export default function MyListingsPage() {
             case "REJECTED": return <span className="text-red-400">❌ Rejected</span>;
             case "PENDING_REVIEW": return <span className="text-[#f5a623]">⏳ Pending Review</span>;
             default: return <span className="text-[#8092ab]">{status}</span>;
+        }
+    };
+
+    const verificationBadge = (verificationStatus?: string) => {
+        switch (verificationStatus) {
+            case "APPROVED": return <span className="text-[#10b981]">✓ Verified</span>;
+            case "PENDING": return <span className="text-[#f59e0b]">⏳ Pending Verification</span>;
+            case "REJECTED": return <span className="text-red-400">✗ Verification Failed</span>;
+            case "NEEDS_MORE_INFORMATION": return <span className="text-[#3b82f6]">ℹ Needs Info</span>;
+            default: return null;
         }
     };
 
@@ -275,14 +335,78 @@ export default function MyListingsPage() {
     );
 
     return (
-        <main className="max-w-6xl mx-auto px-6 py-10">
+        <div className="min-h-screen bg-[#080c15] text-[#c7d2e0] flex relative overflow-x-hidden">
+            <SellerSidebar
+                sidebarOpen={sidebarOpen}
+                setSidebarOpen={setSidebarOpen}
+                profile={profile}
+            />
+
+            {/* ── Main column ── */}
+            <div className="flex-1 ml-0 lg:ml-[248px] flex flex-col min-w-0">
+                {/* Top bar */}
+                <header className="flex items-center justify-between px-4 sm:px-8 lg:px-10 py-4 sm:py-5 border-b border-white/5">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setSidebarOpen(!sidebarOpen)}
+                            className="lg:hidden p-2 rounded-lg text-[#8092ab] hover:text-white hover:bg-white/5 touch-target"
+                            aria-label="Toggle Navigation"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
+                        <div>
+                            <div className="text-[10px] sm:text-[11px] tracking-[0.15em] text-[#4f6380]">MY LISTING</div>
+                            <div className="text-xs sm:text-sm text-[#8092ab] mt-0.5">Manage your business listings</div>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 sm:gap-5">
+                        {/* Bell */}
+                        <div className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-[#8092ab]">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                            </svg>
+                        </div>
+                        {/* User menu */}
+                        <div className="relative" ref={menuRef}>
+                            <button onClick={() => setMenuOpen((o) => !o)} className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-[#057a6b] text-white text-xs font-semibold flex items-center justify-center">
+                                    {initials(profile?.fullName)}
+                                </div>
+                                <span className="text-sm text-[#d8e4f0] hidden sm:inline">{profile?.fullName ?? "Seller"}</span>
+                            </button>
+                            {menuOpen && (
+                                <div className="absolute right-0 top-[calc(100%+10px)] w-56 bg-[#121c32] border border-white/10 rounded-xl shadow-lg overflow-hidden z-10">
+                                    <Link
+                                        href="/seller/profile"
+                                        onClick={() => setMenuOpen(false)}
+                                        className="block px-4 py-3 text-sm text-[#c7d2e0] hover:bg-white/[0.04] hover:text-[#00cfa8] transition-colors"
+                                    >
+                                        Profile &amp; Verification
+                                    </Link>
+                                    <button
+                                        onClick={logout}
+                                        className="w-full text-left px-4 py-3 text-sm text-[#c7d2e0] hover:bg-white/[0.04] hover:text-red-400 transition-colors border-t border-white/5"
+                                    >
+                                        Log out
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </header>
+
+                {/* Page content */}
+                <main className="px-4 sm:px-8 lg:px-10 py-6 sm:py-8">
             <div className="flex items-center justify-between mb-8">
                 <div>
                     <h1 className="text-2xl font-bold text-[#d8e4f0] tracking-wide">MY LISTINGS</h1>
-                    <p className="text-[#4f6380] text-sm mt-1">Manage your business listings</p>
+                    <p className="text-[#4f6380] text-sm mt-1">{businesses.length} listing{businesses.length !== 1 ? "s" : ""}</p>
                 </div>
-                <Link href="/seller/businesses/create" className="bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors text-sm">
-                    + New Listing
+                <Link href="/seller/businesses/create" className="bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors text-sm tracking-wide">
+                    + NEW LISTING
                 </Link>
             </div>
 
@@ -299,6 +423,7 @@ export default function MyListingsPage() {
                             <th className="p-4 text-[11px] tracking-[0.1em] text-[#4f6380] font-medium">LOCATION</th>
                             <th className="p-4 text-[11px] tracking-[0.1em] text-[#4f6380] font-medium">ASKING PRICE</th>
                             <th className="p-4 text-[11px] tracking-[0.1em] text-[#4f6380] font-medium">STATUS</th>
+                            <th className="p-4 text-[11px] tracking-[0.1em] text-[#4f6380] font-medium">VERIFICATION</th>
                             <th className="p-4 text-[11px] tracking-[0.1em] text-[#4f6380] font-medium"></th>
                         </tr>
                         </thead>
@@ -309,8 +434,9 @@ export default function MyListingsPage() {
                                 <td className="p-4 text-sm text-[#d8e4f0]">{b.title}</td>
                                 <td className="p-4 text-sm text-[#8092ab]">{b.category}</td>
                                 <td className="p-4 text-sm text-[#8092ab]">{b.location}</td>
-                                <td className="p-4 text-sm text-[#00cfa8] font-medium">{b.askingPrice.toLocaleString()}</td>
+                                <td className="p-4 text-sm text-[#00cfa8] font-medium">{Number(b.askingPrice ?? 0).toLocaleString()}</td>
                                 <td className="p-4 text-sm">{statusBadge(b.status)}</td>
+                                <td className="p-4 text-sm">{verificationBadge(b.verificationStatus)}</td>
                                 <td className="p-4 space-x-2">
                                     <button
                                         onClick={() => openEdit(b)}
@@ -335,25 +461,25 @@ export default function MyListingsPage() {
 
             {/* ── Enhanced Edit Modal ── */}
             {editingBusiness && editForm && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-[#0d1220] border border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col">
+                <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4 overflow-y-auto">
+                    <div className="bg-[#0d1220] border border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl max-h-[92dvh] flex flex-col my-auto">
 
                         {/* Modal Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-white/5 flex-shrink-0">
+                        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/5 flex-shrink-0">
                             <div>
-                                <h2 className="text-xl font-bold text-[#d8e4f0]">Edit Listing</h2>
-                                <p className="text-xs text-[#4f6380] mt-0.5">{editingBusiness.title}</p>
+                                <h2 className="text-lg sm:text-xl font-bold text-[#d8e4f0]">Edit Listing</h2>
+                                <p className="text-xs text-[#4f6380] mt-0.5 truncate max-w-[200px] sm:max-w-none">{editingBusiness.title}</p>
                             </div>
                             <button
                                 onClick={closeEdit}
-                                className="w-8 h-8 flex items-center justify-center rounded-lg text-[#4f6380] hover:text-[#c7d2e0] hover:bg-white/[0.05] transition-colors"
+                                className="w-8 h-8 flex items-center justify-center rounded-lg text-[#4f6380] hover:text-[#c7d2e0] hover:bg-white/[0.05] transition-colors touch-target"
                             >
                                 ✕
                             </button>
                         </div>
 
                         {/* Modal Scrollable Body */}
-                        <div className="overflow-y-auto flex-1 p-6 space-y-5">
+                        <div className="overflow-y-auto flex-1 p-4 sm:p-6 space-y-5">
 
                             {/* ── Listing Details ── */}
                             <section>
@@ -531,6 +657,8 @@ export default function MyListingsPage() {
                     </div>
                 </div>
             )}
-        </main>
+                </main>
+            </div>
+        </div>
     );
 }

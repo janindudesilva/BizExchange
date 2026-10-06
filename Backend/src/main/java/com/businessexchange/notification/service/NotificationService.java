@@ -37,6 +37,7 @@ public class NotificationService {
                 .user(user)
                 .title(title)
                 .message(message)
+                .link(link)
                 .status(NotificationStatus.UNREAD)
                 .build();
 
@@ -91,15 +92,7 @@ public class NotificationService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        List<Notification> unreadNotifications = notificationRepository.findByUserIdAndStatusOrderByCreatedAtDesc(
-                user.getId(), NotificationStatus.UNREAD);
-
-        unreadNotifications.forEach(notification -> {
-            notification.setStatus(NotificationStatus.READ);
-            notification.setReadAt(LocalDateTime.now());
-        });
-
-        notificationRepository.saveAll(unreadNotifications);
+        notificationRepository.markAllAsRead(user.getId(), NotificationStatus.READ, NotificationStatus.UNREAD, LocalDateTime.now());
     }
 
     public long getUnreadCount(String userEmail) {
@@ -114,8 +107,11 @@ public class NotificationService {
                 .id(notification.getId())
                 .title(notification.getTitle())
                 .message(notification.getMessage())
+                .link(notification.getLink())
                 .status(notification.getStatus().name())
-                .createdAt(notification.getCreatedAt().toString())
+                .createdAt(notification.getCreatedAt() != null
+                        ? notification.getCreatedAt().toString()
+                        : LocalDateTime.now().toString())
                 .readAt(notification.getReadAt() != null ? notification.getReadAt().toString() : null)
                 .build();
     }

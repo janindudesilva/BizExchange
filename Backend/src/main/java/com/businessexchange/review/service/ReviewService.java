@@ -30,6 +30,10 @@ public class ReviewService {
         User buyer = userRepository.findByEmail(buyerEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Buyer not found"));
 
+        if (buyer.getId().equals(sellerId)) {
+            throw new IllegalArgumentException("You cannot review yourself");
+        }
+
         User seller = userRepository.findById(sellerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Seller not found"));
 
@@ -45,8 +49,8 @@ public class ReviewService {
         }
 
         // Check if review already exists
-        if (reviewRepository.findByBuyerIdAndSellerId(buyer.getId(), sellerId).isPresent()) {
-            throw new IllegalStateException("You have already reviewed this seller");
+        if (reviewRepository.existsByBuyerIdAndSellerId(buyer.getId(), sellerId)) {
+            throw new com.businessexchange.common.exception.DuplicateResourceException("You have already reviewed this seller");
         }
 
         Review review = Review.builder()
@@ -62,8 +66,9 @@ public class ReviewService {
     }
 
     public List<ReviewResponse> getSellerReviews(Long sellerId) {
-        User seller = userRepository.findById(sellerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Seller not found"));
+        if (!userRepository.existsById(sellerId)) {
+            throw new ResourceNotFoundException("Seller not found");
+        }
 
         return reviewRepository.findBySellerIdOrderByCreatedAtDesc(sellerId)
                 .stream()
@@ -72,15 +77,17 @@ public class ReviewService {
     }
 
     public Double getSellerAverageRating(Long sellerId) {
-        User seller = userRepository.findById(sellerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Seller not found"));
+        if (!userRepository.existsById(sellerId)) {
+            throw new ResourceNotFoundException("Seller not found");
+        }
 
         return reviewRepository.calculateAverageRating(sellerId);
     }
 
     public Long getSellerReviewCount(Long sellerId) {
-        User seller = userRepository.findById(sellerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Seller not found"));
+        if (!userRepository.existsById(sellerId)) {
+            throw new ResourceNotFoundException("Seller not found");
+        }
 
         return reviewRepository.countBySellerId(sellerId);
     }

@@ -1,5 +1,6 @@
 package com.businessexchange.support.dto;
 
+import com.businessexchange.support.entity.TicketPriority;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -12,4 +13,6 @@ public class TicketCreateRequest {
 
     @NotBlank
     private String description;
+
+    private TicketPriority priority = TicketPriority.MEDIUM;
 }

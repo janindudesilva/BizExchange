@@ -41,11 +41,21 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const accentClassMap: Record<string, string> = {
+    "text-[#00cfa8]": "stat-card-accent-teal",
+    "text-[#3b82f6]": "stat-card-accent-blue",
+    "text-[#f59e0b]": "stat-card-accent-amber",
+    "text-[#8b5cf6]": "stat-card-accent-rose",
+    "text-[#10b981]": "stat-card-accent-teal",
+    "text-[#ec4899]": "stat-card-accent-rose",
+    "text-[#4f6380]": "stat-card-accent-blue",
+  };
+
   const StatCard = ({ title, value, subtitle, color }: { title: string; value: number; subtitle: string; color: string }) => (
-    <div className="bg-[#121c32] border border-white/5 p-6 rounded-2xl">
+    <div className={`glass-panel ${accentClassMap[color] ?? ""} p-4 sm:p-6 rounded-2xl`}>
       <div className="text-[11px] tracking-[0.1em] text-[#4f6380] mb-2">{title}</div>
-      <div className={`text-3xl font-bold mb-1 ${color}`}>{value.toLocaleString()}</div>
-      <div className="text-sm text-[#8092ab]">{subtitle}</div>
+      <div className={`text-2xl sm:text-3xl font-bold mb-1 tabular-nums ${color}`}>{value.toLocaleString()}</div>
+      <div className="text-xs sm:text-sm text-[#8092ab]">{subtitle}</div>
     </div>
   );
 
@@ -79,30 +89,38 @@ export default function AdminDashboardPage() {
     });
 
     return (
-      <svg viewBox="0 0 100 100" className="w-32 h-32">
+      <svg viewBox="0 0 100 100" className="w-28 h-28 sm:w-32 sm:h-32 shrink-0">
         {paths}
       </svg>
     );
   };
 
   return (
-    <main className="max-w-6xl mx-auto px-6 py-10">
-      <h1 className="text-2xl font-bold mb-2 text-[#d8e4f0] tracking-wide">ADMIN DASHBOARD</h1>
-      <p className="text-[#4f6380] text-sm mb-8">Manage the platform from here</p>
+    <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <h1 className="text-xl sm:text-2xl font-bold mb-2 text-[#d8e4f0] tracking-wide">ADMIN DASHBOARD</h1>
+      <p className="text-[#4f6380] text-sm mb-6 sm:mb-8">Manage the platform from here</p>
 
       {loading ? (
-        <div className="text-[#4f6380]">Loading analytics...</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="glass-panel p-4 sm:p-6 rounded-2xl space-y-3">
+              <div className="skeleton h-3 w-20 rounded" />
+              <div className="skeleton h-8 w-24 rounded" />
+              <div className="skeleton h-3 w-32 rounded" />
+            </div>
+          ))}
+        </div>
       ) : analytics ? (
         <>
           {/* Stats Grid */}
-          <div className="grid md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
             <StatCard title="TOTAL USERS" value={analytics.totalUsers} subtitle="All registered users" color="text-[#00cfa8]" />
             <StatCard title="BUYERS" value={analytics.totalBuyers} subtitle="Active buyers" color="text-[#3b82f6]" />
             <StatCard title="SELLERS" value={analytics.totalSellers} subtitle="Active sellers" color="text-[#f59e0b]" />
             <StatCard title="BUSINESSES" value={analytics.totalBusinesses} subtitle="Total listings" color="text-[#8b5cf6]" />
           </div>
 
-          <div className="grid md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
             <StatCard title="APPROVED" value={analytics.approvedBusinesses} subtitle="Approved listings" color="text-[#10b981]" />
             <StatCard title="PENDING" value={analytics.pendingBusinesses} subtitle="Awaiting review" color="text-[#f59e0b]" />
             <StatCard title="INQUIRIES" value={analytics.totalInquiries} subtitle="Total inquiries" color="text-[#3b82f6]" />
@@ -110,10 +128,10 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Charts Section */}
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
-            <div className="bg-[#121c32] border border-white/5 p-6 rounded-2xl">
-              <h3 className="text-lg font-semibold text-[#d8e4f0] mb-4">Business Status Distribution</h3>
-              <div className="flex items-center gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-8">
+            <div className="glass-panel p-5 sm:p-6 rounded-2xl">
+              <h3 className="text-base sm:text-lg font-semibold text-[#d8e4f0] mb-4">Business Status Distribution</h3>
+              <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
                 <PieChart 
                   data={[
                     { label: "Approved", value: analytics.approvedBusinesses, color: "#10b981" },
@@ -138,9 +156,9 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            <div className="bg-[#121c32] border border-white/5 p-6 rounded-2xl">
-              <h3 className="text-lg font-semibold text-[#d8e4f0] mb-4">User Distribution</h3>
-              <div className="flex items-center gap-8">
+            <div className="glass-panel p-5 sm:p-6 rounded-2xl">
+              <h3 className="text-base sm:text-lg font-semibold text-[#d8e4f0] mb-4">User Distribution</h3>
+              <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
                 <PieChart 
                   data={[
                     { label: "Buyers", value: analytics.totalBuyers, color: "#3b82f6" },
@@ -167,21 +185,21 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Additional Metrics */}
-          <div className="grid md:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8">
             <StatCard title="ACTIVE INQUIRIES" value={analytics.activeInquiries} subtitle="Ongoing conversations" color="text-[#10b981]" />
             <StatCard title="CLOSED INQUIRIES" value={analytics.closedInquiries} subtitle="Completed deals" color="text-[#4f6380]" />
             <StatCard title="TOTAL MESSAGES" value={analytics.totalMessages} subtitle="Messages sent" color="text-[#3b82f6]" />
           </div>
 
-          {analytics.averageRating !== null && (
-            <div className="bg-[#121c32] border border-white/5 p-6 rounded-2xl mb-8">
+          {analytics.averageRating != null && !isNaN(analytics.averageRating) && (
+            <div className="glass-panel p-5 sm:p-6 rounded-2xl mb-8">
               <div className="text-[11px] tracking-[0.1em] text-[#4f6380] mb-2">AVERAGE PLATFORM RATING</div>
               <div className="flex items-center gap-4">
-                <div className="text-4xl font-bold text-yellow-500">
+                <div className="text-3xl sm:text-4xl font-bold text-yellow-500">
                   {analytics.averageRating.toFixed(1)}
                 </div>
                 <div className="text-2xl text-yellow-500">★</div>
-                <div className="text-[#8092ab] text-sm">
+                <div className="text-[#8092ab] text-xs sm:text-sm">
                   Based on {analytics.totalReviews} reviews across all sellers
                 </div>
               </div>
@@ -193,8 +211,8 @@ export default function AdminDashboardPage() {
       )}
 
       {/* Action Cards */}
-      <div className="grid md:grid-cols-3 gap-5">
-        <div className="bg-[#121c32] border border-white/5 p-6 rounded-2xl">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+        <div className="glass-panel card-lift p-6 rounded-2xl border border-white/[0.07]">
           <div className="text-[11px] tracking-[0.1em] text-[#4f6380] mb-3">BUSINESS APPROVALS</div>
           <h2 className="text-lg font-semibold mb-2 text-[#d8e4f0]">Business Approvals</h2>
           <p className="text-[#8092ab] text-sm mb-5">
@@ -204,13 +222,13 @@ export default function AdminDashboardPage() {
               onClick={() => {
                 router.push("/admin/businesses/pending");
               }}
-              className="bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors text-sm"
+              className="btn-primary !py-2 !px-4 !text-sm !rounded-lg"
               >
               View Pending
             </button>
         </div>
 
-        <div className="bg-[#121c32] border border-white/5 p-6 rounded-2xl">
+        <div className="glass-panel card-lift p-6 rounded-2xl border border-white/[0.07]">
           <div className="text-[11px] tracking-[0.1em] text-[#4f6380] mb-3">USERS</div>
           <h2 className="text-lg font-semibold mb-2 text-[#d8e4f0]">User Management</h2>
           <p className="text-[#8092ab] text-sm mb-5">
@@ -218,12 +236,12 @@ export default function AdminDashboardPage() {
           </p>
           <button
               onClick={() => router.push("/admin/users")}
-              className="bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors text-sm">
+              className="bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors text-sm min-h-[40px] inline-flex items-center justify-center">
             Manage Users
           </button>
         </div>
 
-        <div className="bg-[#121c32] border border-white/5 p-6 rounded-2xl">
+        <div className="glass-panel card-lift p-6 rounded-2xl border border-white/[0.07]">
           <div className="text-[11px] tracking-[0.1em] text-[#4f6380] mb-3">SELLERS</div>
           <h2 className="text-lg font-semibold mb-2 text-[#d8e4f0]">Sellers</h2>
           <p className="text-[#8092ab] text-sm mb-5">
@@ -231,12 +249,12 @@ export default function AdminDashboardPage() {
           </p>
           <button 
           onClick={() => router.push('/admin/sellers')}
-          className="bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors text-sm">
+          className="bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors text-sm min-h-[40px] inline-flex items-center justify-center">
             View Sellers
           </button>
         </div>
 
-        <div className="bg-[#121c32] border border-white/5 p-6 rounded-2xl">
+        <div className="glass-panel card-lift p-6 rounded-2xl border border-white/[0.07]">
           <div className="text-[11px] tracking-[0.1em] text-[#4f6380] mb-3">VERIFICATION</div>
           <h2 className="text-lg font-semibold mb-2 text-[#d8e4f0]">Seller Verification</h2>
           <p className="text-[#8092ab] text-sm mb-5">
@@ -244,12 +262,12 @@ export default function AdminDashboardPage() {
           </p>
           <button
               onClick={() => router.push("/admin/sellers/pending")}
-              className="bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors text-sm">
+              className="bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors text-sm min-h-[40px] inline-flex items-center justify-center">
             Verify Sellers
           </button>
         </div>
 
-        <div className="bg-[#121c32] border border-white/5 p-6 rounded-2xl">
+        <div className="glass-panel card-lift p-6 rounded-2xl border border-white/[0.07]">
           <div className="text-[11px] tracking-[0.1em] text-[#4f6380] mb-3">CATEGORIES</div>
           <h2 className="text-lg font-semibold mb-2 text-[#d8e4f0]">Categories</h2>
           <p className="text-[#8092ab] text-sm mb-5">
@@ -257,12 +275,12 @@ export default function AdminDashboardPage() {
           </p>
           <button
               onClick={() => router.push("/admin/categories")}
-              className="bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors text-sm">
+              className="bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors text-sm min-h-[40px] inline-flex items-center justify-center">
             Manage Categories
           </button>
         </div>
 
-        <div className="bg-[#121c32] border border-white/5 p-6 rounded-2xl">
+        <div className="glass-panel card-lift p-6 rounded-2xl border border-white/[0.07]">
           <div className="text-[11px] tracking-[0.1em] text-[#4f6380] mb-3">STAFF</div>
           <h2 className="text-lg font-semibold mb-2 text-[#d8e4f0]">Manage Staff</h2>
           <p className="text-[#8092ab] text-sm mb-5">
@@ -270,12 +288,12 @@ export default function AdminDashboardPage() {
           </p>
           <button
               onClick={() => router.push("/admin/staff")}
-              className="bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors text-sm">
+              className="bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors text-sm min-h-[40px] inline-flex items-center justify-center">
             Manage Staff
           </button>
         </div>
 
-        <div className="bg-[#121c32] border border-white/5 p-6 rounded-2xl">
+        <div className="glass-panel card-lift p-6 rounded-2xl border border-white/[0.07]">
           <div className="text-[11px] tracking-[0.1em] text-[#4f6380] mb-3">SUPPORT</div>
           <h2 className="text-lg font-semibold mb-2 text-[#d8e4f0]">Support Tickets</h2>
           <p className="text-[#8092ab] text-sm mb-5">
@@ -283,7 +301,7 @@ export default function AdminDashboardPage() {
           </p>
           <button
               onClick={() => router.push("/admin/tickets")}
-              className="bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors text-sm">
+              className="bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors text-sm min-h-[40px] inline-flex items-center justify-center">
             View Tickets
           </button>
         </div>

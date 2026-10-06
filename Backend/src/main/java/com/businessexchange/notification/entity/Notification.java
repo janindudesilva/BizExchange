@@ -7,7 +7,10 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "notifications")
+@Table(name = "notifications", indexes = {
+        @Index(name = "idx_notifications_user_status", columnList = "user_id, status"),
+        @Index(name = "idx_notifications_created_at", columnList = "created_at DESC")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -28,6 +31,9 @@ public class Notification {
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String message;
+
+    @Column(name = "link", length = 500)
+    private String link;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

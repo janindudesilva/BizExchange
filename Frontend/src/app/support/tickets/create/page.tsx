@@ -9,6 +9,7 @@ export default function CreateTicketPage() {
   const [formData, setFormData] = useState({
     subject: "",
     description: "",
+    priority: "MEDIUM",
   });
   const [message, setMessage] = useState("");
 
@@ -60,6 +61,20 @@ export default function CreateTicketPage() {
             className="w-full bg-[#0d1220] border border-white/10 text-[#c7d2e0] p-3 rounded-lg focus:outline-none focus:border-[#00cfa8]/50 h-48 resize-none"
             required
           />
+        </div>
+
+        <div>
+          <label className="block text-[#4f6380] text-xs tracking-wider mb-2">PRIORITY</label>
+          <select
+            value={formData.priority}
+            onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+            className="w-full bg-[#0d1220] border border-white/10 text-[#c7d2e0] p-3 rounded-lg focus:outline-none focus:border-[#00cfa8]/50"
+          >
+            <option value="LOW">Low</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="HIGH">High</option>
+            <option value="URGENT">Urgent</option>
+          </select>
         </div>
 
         <div className="flex gap-3">

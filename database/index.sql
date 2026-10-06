@@ -39,7 +39,7 @@ CREATE INDEX idx_payments_status ON payments(status);
 CREATE INDEX idx_saved_businesses_buyer_id ON saved_businesses(buyer_id);
 
 CREATE INDEX idx_reports_status ON reports(status);
-CREATE INDEX idx_support_tickets_user_id ON support_tickets(user_id);
+CREATE INDEX idx_support_tickets_created_by ON support_tickets(created_by);
 CREATE INDEX idx_support_tickets_status ON support_tickets(status);
 
 CREATE INDEX idx_notifications_user_id ON notifications(user_id);

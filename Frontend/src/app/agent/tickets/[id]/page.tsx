@@ -6,6 +6,7 @@ import { apiRequest } from "@/lib/api";
 
 interface Ticket {
   id: number;
+  ticketNumber: string;
   createdById: number;
   createdByName: string;
   createdByEmail: string;
@@ -14,6 +15,7 @@ interface Ticket {
   subject: string;
   description: string;
   status: string;
+  priority: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -122,6 +124,21 @@ export default function AgentTicketDetailPage() {
     }
   };
 
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "LOW":
+        return "bg-[#10b981]/20 text-[#10b981]";
+      case "MEDIUM":
+        return "bg-[#f59e0b]/20 text-[#f59e0b]";
+      case "HIGH":
+        return "bg-[#ef4444]/20 text-[#ef4444]";
+      case "URGENT":
+        return "bg-[#ef4444]/40 text-[#ef4444]";
+      default:
+        return "bg-[#8092ab]/20 text-[#8092ab]";
+    }
+  };
+
   if (loading) {
     return (
       <main className="max-w-6xl mx-auto px-6 py-10">
@@ -142,7 +159,7 @@ export default function AgentTicketDetailPage() {
     <main className="max-w-6xl mx-auto px-6 py-10">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-[#d8e4f0] tracking-wide">TICKET #{ticket.id}</h1>
+          <h1 className="text-2xl font-bold text-[#d8e4f0] tracking-wide">{ticket.ticketNumber}</h1>
           <p className="text-[#4f6380] text-sm">{ticket.subject}</p>
         </div>
         <button
@@ -167,6 +184,12 @@ export default function AgentTicketDetailPage() {
               <div className="text-[#4f6380] text-xs tracking-wider mb-1">STATUS</div>
               <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(ticket.status)}`}>
                 {ticket.status.replace("_", " ")}
+              </span>
+            </div>
+            <div>
+              <div className="text-[#4f6380] text-xs tracking-wider mb-1">PRIORITY</div>
+              <span className={`px-2 py-1 rounded text-xs font-medium ${getPriorityColor(ticket.priority)}`}>
+                {ticket.priority}
               </span>
             </div>
             <div>

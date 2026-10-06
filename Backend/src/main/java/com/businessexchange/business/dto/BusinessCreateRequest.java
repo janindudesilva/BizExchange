@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 @Data
 public class BusinessCreateRequest {
 
-    @NotNull(message = "Seller ID is required")
+    // Optional: Only admins may specify a target sellerId. Non-admins always use their authenticated identity.
     private Long sellerId;
 
     @NotNull(message = "Category is required")

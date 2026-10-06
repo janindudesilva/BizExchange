@@ -4,6 +4,7 @@ import com.businessexchange.common.response.ApiResponse;
 import com.businessexchange.user.dto.UserResponse;
 import com.businessexchange.user.entity.AccountStatus;
 import com.businessexchange.user.entity.User;
+import com.businessexchange.user.entity.UserRole;
 import com.businessexchange.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -31,10 +32,14 @@ public class AdminUserController {
     @PutMapping("/{userId}/suspend")
     public ApiResponse<Void> suspendUser(@PathVariable Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new com.businessexchange.common.exception.ResourceNotFoundException("User not found"));
 
-        if (user.getRole().name().equals("ADMIN")) {
-            throw new RuntimeException("Cannot suspend admin users");
+        if (user.getRole() == UserRole.ADMIN) {
+            throw new IllegalArgumentException("Cannot suspend admin users");
+        }
+
+        if (user.getStatus() == AccountStatus.DELETED) {
+            throw new IllegalArgumentException("Cannot suspend a deleted account");
         }
 
         user.setStatus(AccountStatus.SUSPENDED);
@@ -46,7 +51,25 @@ public class AdminUserController {
     @PutMapping("/{userId}/unsuspend")
     public ApiResponse<Void> unsuspendUser(@PathVariable Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new com.businessexchange.common.exception.ResourceNotFoundException("User not found"));
+
+        // Only suspended accounts may be un-suspended
+        if (user.getStatus() != AccountStatus.SUSPENDED) {
+            throw new IllegalArgumentException(
+                    "User is not suspended (current status: " + user.getStatus() + ")");
+        }
+
+        // Deleted accounts must never be revived via this endpoint
+        if (user.getStatus() == AccountStatus.DELETED) {
+            throw new IllegalArgumentException("Cannot unsuspend a deleted account");
+        }
+
+        // Unverified users return to PENDING_VERIFICATION, not ACTIVE
+        if (Boolean.FALSE.equals(user.getEmailVerified())) {
+            user.setStatus(AccountStatus.PENDING_VERIFICATION);
+            userRepository.save(user);
+            return ApiResponse.success("User unsuspended — returned to PENDING_VERIFICATION (email not verified)", null);
+        }
 
         user.setStatus(AccountStatus.ACTIVE);
         userRepository.save(user);

@@ -1,3 +1,10 @@
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TYPE ticket_status AS ENUM ('OPEN', 'IN_PROGRESS', 'ESCALATED', 'RESOLVED', 'CLOSED');
+
+CREATE TYPE ticket_priority AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'URGENT');
+
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
 
@@ -55,6 +62,7 @@ CREATE TABLE seller_profiles (
 
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 0,
 
     CONSTRAINT fk_seller_user
         FOREIGN KEY (user_id)
@@ -125,12 +133,15 @@ CREATE TABLE businesses (
 
     status business_status NOT NULL DEFAULT 'DRAFT',
 
+    verification_status verification_status NOT NULL DEFAULT 'PENDING',
+
     approved_by BIGINT,
     approved_at TIMESTAMP,
     rejection_reason TEXT,
 
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 0,
 
     CONSTRAINT fk_business_seller
         FOREIGN KEY (seller_id)
@@ -450,24 +461,52 @@ CREATE TABLE reports (
 CREATE TABLE support_tickets (
     id BIGSERIAL PRIMARY KEY,
 
-    user_id BIGINT NOT NULL,
-    assigned_agent_id BIGINT,
+    ticket_number VARCHAR(20) UNIQUE NOT NULL,
+    created_by BIGINT NOT NULL,
+    assigned_to BIGINT,
 
     subject VARCHAR(200) NOT NULL,
     description TEXT NOT NULL,
 
     status ticket_status NOT NULL DEFAULT 'OPEN',
+    priority ticket_priority NOT NULL DEFAULT 'MEDIUM',
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 0,
+
+    CONSTRAINT fk_ticket_created_by
+        FOREIGN KEY (created_by)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_ticket_assigned_to
+        FOREIGN KEY (assigned_to)
+        REFERENCES users(id)
+        ON DELETE SET NULL
+);
+
+CREATE TABLE verification_requests (
+    id BIGSERIAL PRIMARY KEY,
+
+    business_id BIGINT NOT NULL,
+    officer_id BIGINT,
+
+    status verification_status NOT NULL DEFAULT 'PENDING',
+    remarks TEXT,
+
+    verified_at TIMESTAMP,
 
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_ticket_user
-        FOREIGN KEY (user_id)
-        REFERENCES users(id)
+    CONSTRAINT fk_verification_business
+        FOREIGN KEY (business_id)
+        REFERENCES businesses(id)
         ON DELETE CASCADE,
 
-    CONSTRAINT fk_ticket_agent
-        FOREIGN KEY (assigned_agent_id)
+    CONSTRAINT fk_verification_officer
+        FOREIGN KEY (officer_id)
         REFERENCES users(id)
         ON DELETE SET NULL
 );
@@ -571,28 +610,6 @@ CREATE TABLE IF NOT EXISTS email_verification_tokens (
 CREATE INDEX IF NOT EXISTS idx_evt_token ON email_verification_tokens (token);
 CREATE INDEX IF NOT EXISTS idx_evt_user ON email_verification_tokens (user_id);
 
--- ── Support Tickets ───────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS support_tickets (
-    id         BIGSERIAL PRIMARY KEY,
-    created_by BIGINT       NOT NULL,
-    assigned_to BIGINT,
-    subject    VARCHAR(200) NOT NULL,
-    description TEXT        NOT NULL,
-    status     ticket_status NOT NULL DEFAULT 'OPEN',
-    created_at TIMESTAMP    NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP    NOT NULL DEFAULT NOW(),
-
-    CONSTRAINT fk_ticket_created_by
-        FOREIGN KEY (created_by)
-        REFERENCES users(id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT fk_ticket_assigned_to
-        FOREIGN KEY (assigned_to)
-        REFERENCES users(id)
-        ON DELETE SET NULL
-);
-
 CREATE INDEX IF NOT EXISTS idx_ticket_created_by ON support_tickets (created_by);
 CREATE INDEX IF NOT EXISTS idx_ticket_assigned_to ON support_tickets (assigned_to);
 CREATE INDEX IF NOT EXISTS idx_ticket_status ON support_tickets (status);
@@ -618,3 +635,21 @@ CREATE TABLE IF NOT EXISTS ticket_messages (
 
 CREATE INDEX IF NOT EXISTS idx_message_ticket ON ticket_messages (ticket_id);
 CREATE INDEX IF NOT EXISTS idx_message_sender ON ticket_messages (sender_id);
+
+-- ── Password Reset Requests ──────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS password_reset_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    otp_hash VARCHAR(255) NOT NULL,
+    otp_expires_at TIMESTAMP NOT NULL,
+    attempt_count INT NOT NULL DEFAULT 0,
+    verified BOOLEAN NOT NULL DEFAULT FALSE,
+    reset_token VARCHAR(255),
+    reset_token_expires_at TIMESTAMP,
+    used BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_prr_user_id ON password_reset_requests (user_id);
+CREATE INDEX IF NOT EXISTS idx_prr_reset_token ON password_reset_requests (reset_token);
+

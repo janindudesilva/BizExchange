@@ -33,9 +33,7 @@ public class AdminStaffController {
                 UserRole.VERIFICATION_OFFICER
         );
 
-        List<User> staff = userRepository.findAll().stream()
-                .filter(user -> staffRoles.contains(user.getRole()))
-                .toList();
+        List<User> staff = userRepository.findByRoleIn(staffRoles);
 
         List<UserResponse> responses = staff.stream()
                 .map(this::mapToResponse)
@@ -52,9 +50,13 @@ public class AdminStaffController {
 
         UserRole role;
         try {
-            role = UserRole.valueOf(request.getRole());
+            role = UserRole.valueOf(request.getRole().trim().toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Invalid role specified: " + request.getRole());
+        }
+
+        if (role != UserRole.ADMIN && role != UserRole.SUPPORT_AGENT && role != UserRole.VERIFICATION_OFFICER) {
+            throw new IllegalArgumentException("Staff member role must be ADMIN, SUPPORT_AGENT, or VERIFICATION_OFFICER");
         }
 
         User staffMember = User.builder()

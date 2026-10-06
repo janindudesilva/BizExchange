@@ -7,6 +7,7 @@ import com.businessexchange.business.repository.BusinessRepository;
 import com.businessexchange.common.exception.ResourceNotFoundException;
 import com.businessexchange.notification.service.NotificationService;
 import com.businessexchange.user.entity.User;
+import com.businessexchange.user.entity.UserRole;
 import com.businessexchange.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,14 +27,22 @@ public class AdminBusinessService {
     private final NotificationService notificationService;
 
     @Transactional
-    public BusinessResponse approveBusiness(Long businessId, Long adminId) {
+    public BusinessResponse approveBusiness(Long businessId, String adminEmail) {
         Business business = businessRepository.findById(businessId)
                 .orElseThrow(() -> new ResourceNotFoundException("Business not found"));
 
-        User admin = userRepository.findById(adminId)
+        User admin = userRepository.findByEmail(adminEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Admin not found"));
 
+        if (admin.getRole() != UserRole.ADMIN) {
+            throw new org.springframework.security.access.AccessDeniedException("Only administrators can approve businesses");
+        }
+
         business.setStatus(BusinessStatus.APPROVED);
+        // Ensure verification status is approved so listing appears publicly
+        if (business.getVerificationStatus() == null || business.getVerificationStatus() == com.businessexchange.seller.entity.VerificationStatus.PENDING) {
+            business.setVerificationStatus(com.businessexchange.seller.entity.VerificationStatus.APPROVED);
+        }
         business.setApprovedBy(admin);
         business.setApprovedAt(LocalDateTime.now());
         business.setRejectionReason(null);
@@ -51,12 +60,16 @@ public class AdminBusinessService {
     }
 
     @Transactional
-    public BusinessResponse rejectBusiness(Long businessId, Long adminId, String reason) {
+    public BusinessResponse rejectBusiness(Long businessId, String adminEmail, String reason) {
         Business business = businessRepository.findById(businessId)
                 .orElseThrow(() -> new ResourceNotFoundException("Business not found"));
 
-        User admin = userRepository.findById(adminId)
+        User admin = userRepository.findByEmail(adminEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Admin not found"));
+
+        if (admin.getRole() != UserRole.ADMIN) {
+            throw new org.springframework.security.access.AccessDeniedException("Only administrators can reject businesses");
+        }
 
         business.setStatus(BusinessStatus.REJECTED);
         business.setApprovedBy(admin);
@@ -76,9 +89,7 @@ public class AdminBusinessService {
     }
 
     public List<BusinessResponse> getPendingBusinesses() {
-    return businessRepository.findByStatus(BusinessStatus.PENDING_REVIEW)
-            .stream()
-            .map(businessService::mapToResponse)
-            .toList();
-}
+        List<Business> pending = businessRepository.findByStatus(BusinessStatus.PENDING_REVIEW);
+        return businessService.mapListToResponses(pending, null);
+    }
 }

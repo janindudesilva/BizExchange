@@ -79,7 +79,7 @@ export default function ResendVerificationPage() {
 
         <div className="mt-6 text-center">
           <button
-            onClick={() => router.push("/auth/login")}
+            onClick={() => router.push("/login")}
             className="text-[#8092ab] text-sm hover:text-[#d8e4f0] transition-colors"
           >
             Back to Login

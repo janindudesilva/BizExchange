@@ -15,10 +15,14 @@ import org.springframework.web.bind.annotation.*;
 public class SellerProfileController {
 
     private final SellerService sellerService;
+    private final com.businessexchange.user.repository.UserRepository userRepository;
 
     @GetMapping("/{userId}")
     @PreAuthorize("hasRole('SELLER') or hasRole('ADMIN')")
-    public ResponseEntity<SellerProfileResponseDto> getMyProfile(@PathVariable Long userId) {
+    public ResponseEntity<SellerProfileResponseDto> getMyProfile(
+            @PathVariable Long userId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+        verifyProfileOwnership(userId, userDetails);
         return ResponseEntity.ok(sellerService.getSellerByUserId(userId));
     }
 
@@ -26,7 +30,22 @@ public class SellerProfileController {
     @PreAuthorize("hasRole('SELLER') or hasRole('ADMIN')")
     public ResponseEntity<SellerProfileResponseDto> updateMyProfile(
             @PathVariable Long userId,
-            @Valid @RequestBody UpdateSellerProfileRequest request) {
+            @Valid @RequestBody UpdateSellerProfileRequest request,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+        verifyProfileOwnership(userId, userDetails);
         return ResponseEntity.ok(sellerService.updateSellerProfile(userId, request));
+    }
+
+    private void verifyProfileOwnership(Long targetUserId, org.springframework.security.core.userdetails.UserDetails userDetails) {
+        if (userDetails == null) {
+            throw new org.springframework.security.access.AccessDeniedException("Not authenticated");
+        }
+        com.businessexchange.user.entity.User caller = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new com.businessexchange.common.exception.ResourceNotFoundException("User not found"));
+        boolean isAdmin = caller.getRole() == com.businessexchange.user.entity.UserRole.ADMIN;
+        boolean isOwner = caller.getId().equals(targetUserId);
+        if (!isAdmin && !isOwner) {
+            throw new org.springframework.security.access.AccessDeniedException("You are not authorized to view or edit this seller profile");
+        }
     }
 }

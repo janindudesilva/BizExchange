@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { apiRequest } from "@/lib/api";
 import { Inquiry, InquiryApiResponse, SingleInquiryApiResponse } from "@/types/inquiry";
+import SellerSidebar from "@/components/SellerSidebar";
 
 type VerificationStatus = "PENDING" | "APPROVED" | "REJECTED";
 
@@ -20,12 +21,9 @@ const NAV_ITEMS: {
     { label: "Overview", href: "/seller/dashboard" },
     { label: "My Listing", href: "/seller/businesses" },
     { label: "Inquiries", href: "/seller/inquiries" },
-    { label: "Offers" },
-    { label: "Active Deals" },
-    { label: "Payments" },
-    { label: "Reviews" },
-    { label: "Support" },
-    { label: "Notifications" },
+    { label: "Offers", href: "/seller/inquiries" },
+    { label: "Active Deals", href: "/seller/inquiries" },
+    { label: "Support", href: "/support/my-tickets" },
 ];
 
 function initials(name: string | undefined): string {
@@ -51,6 +49,7 @@ export default function SellerInquiriesPage() {
     const [error, setError] = useState("");
     const [actingId, setActingId] = useState<number | null>(null);
     const [menuOpen, setMenuOpen] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -120,89 +119,38 @@ export default function SellerInquiriesPage() {
     const verificationStatus = profile?.verificationStatus ?? null;
 
     return (
-        <div
-            className="min-h-screen bg-[#080c15] text-[#c7d2e0] flex"
-            style={{
-                fontFamily:
-                    'ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace',
-            }}
-        >
-            {/* ── Sidebar ── */}
-            <aside className="w-[248px] shrink-0 fixed inset-y-0 left-0 bg-[#0d1220] border-r border-white/5 flex flex-col justify-between">
-                <div>
-                    <div className="px-6 py-6 border-b border-white/5">
-                        <div className="text-[#00cfa8] font-bold tracking-wide text-lg leading-tight">
-                            BIZEXCHANGE
-                        </div>
-                        <div className="text-[#4f6380] text-[11px] tracking-[0.15em] mt-1">
-                            SELLER PORTAL
-                        </div>
-                    </div>
-
-                    <nav className="py-3">
-                        {NAV_ITEMS.map((item) => {
-                            const isActive = item.label === "Inquiries";
-                            const content = (
-                                <div
-                                    className={`flex items-center justify-between px-6 py-3 text-sm border-l-2 transition-colors ${
-                                        isActive
-                                            ? "border-[#00cfa8] bg-[#0c212a] text-[#00cfa8] font-medium"
-                                            : "border-transparent text-[#8092ab] hover:text-[#c7d2e0] hover:bg-white/[0.02]"
-                                    }`}
-                                >
-                                    <span>{item.label}</span>
-                                    {item.badge ? (
-                                        <span className="text-[10px] bg-[#f5a623] text-[#1a1204] rounded-full w-4 h-4 flex items-center justify-center leading-none">
-                                            {item.badge}
-                                        </span>
-                                    ) : null}
-                                </div>
-                            );
-
-                            return item.href ? (
-                                <Link key={item.label} href={item.href}>
-                                    {content}
-                                </Link>
-                            ) : (
-                                <div key={item.label} className="cursor-default">
-                                    {content}
-                                </div>
-                            );
-                        })}
-                    </nav>
-                </div>
-
-                <div className="px-6 py-5 border-t border-white/5">
-                    <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-[#057a6b] text-white text-xs font-semibold flex items-center justify-center shrink-0">
-                            {initials(profile?.fullName)}
-                        </div>
-                        <div className="min-w-0">
-                            <div className="text-sm text-[#d8e4f0] truncate">
-                                {profile?.fullName ?? "Seller"}
-                            </div>
-                            <div className="text-[11px] text-[#4f6380] truncate">
-                                {verificationLabel(verificationStatus)}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </aside>
+        <div className="min-h-screen bg-[#080c15] text-[#c7d2e0] flex relative overflow-x-hidden">
+            <SellerSidebar
+                sidebarOpen={sidebarOpen}
+                setSidebarOpen={setSidebarOpen}
+                profile={profile ? { fullName: profile.fullName, verificationStatus: verificationStatus || undefined } : null}
+            />
 
             {/* ── Main column ── */}
-            <div className="flex-1 ml-[248px] flex flex-col">
+            <div className="flex-1 ml-0 lg:ml-[248px] flex flex-col min-w-0">
                 {/* Top bar */}
-                <header className="flex items-center justify-between px-10 py-5 border-b border-white/5">
-                    <div>
-                        <div className="text-[11px] tracking-[0.15em] text-[#4f6380]">
-                            INQUIRIES
-                        </div>
-                        <div className="text-sm text-[#8092ab] mt-1">
-                            Manage buyer inquiries on your listings
+                <header className="flex items-center justify-between px-4 sm:px-8 lg:px-10 py-4 sm:py-5 border-b border-white/5 gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <button
+                            onClick={() => setSidebarOpen(true)}
+                            className="lg:hidden p-2 text-[#8092ab] hover:text-white rounded-lg border border-white/10 shrink-0"
+                            aria-label="Open menu"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
+                        <div className="min-w-0">
+                            <div className="text-[11px] tracking-[0.15em] text-[#4f6380]">
+                                INQUIRIES
+                            </div>
+                            <div className="text-xs sm:text-sm text-[#8092ab] mt-0.5 truncate">
+                                Manage buyer inquiries on your listings
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-5">
+                    <div className="flex items-center gap-3 sm:gap-5 shrink-0">
                         <div className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-[#8092ab]">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -213,18 +161,18 @@ export default function SellerInquiriesPage() {
                         <div className="relative" ref={menuRef}>
                             <button
                                 onClick={() => setMenuOpen((open) => !open)}
-                                className="flex items-center gap-2"
+                                className="flex items-center gap-2 touch-target"
                             >
                                 <div className="w-8 h-8 rounded-full bg-[#057a6b] text-white text-xs font-semibold flex items-center justify-center">
                                     {initials(profile?.fullName)}
                                 </div>
-                                <span className="text-sm text-[#d8e4f0]">
+                                <span className="hidden sm:inline text-sm text-[#d8e4f0]">
                                     {profile?.fullName ?? "Seller"}
                                 </span>
                             </button>
 
                             {menuOpen && (
-                                <div className="absolute right-0 top-[calc(100%+10px)] w-56 bg-[#121c32] border border-white/10 rounded-xl shadow-lg overflow-hidden z-10">
+                                <div className="absolute right-0 top-[calc(100%+10px)] w-56 bg-[#121c32] border border-white/10 rounded-xl shadow-lg overflow-hidden z-20">
                                     <Link
                                         href="/seller/profile"
                                         onClick={() => setMenuOpen(false)}
@@ -244,8 +192,8 @@ export default function SellerInquiriesPage() {
                     </div>
                 </header>
 
-                <main className="px-10 py-8 max-w-4xl">
-                    <h1 className="text-2xl font-bold text-[#d8e4f0] tracking-wide mb-6">
+                <main className="px-4 sm:px-8 lg:px-10 py-6 sm:py-8 max-w-4xl w-full">
+                    <h1 className="text-xl sm:text-2xl font-bold text-[#d8e4f0] tracking-wide mb-6">
                         INCOMING INQUIRIES
                     </h1>
 
@@ -260,38 +208,38 @@ export default function SellerInquiriesPage() {
                         {inquiries.map((inquiry) => (
                             <div
                                 key={inquiry.id}
-                                className="bg-[#121c32] border border-white/5 rounded-2xl p-5"
+                                className="bg-[#121c32] border border-white/5 rounded-2xl p-4 sm:p-5"
                             >
-                                <div className="flex items-center justify-between mb-2">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                                     <Link
                                         href={`/businesses/${inquiry.businessId}`}
-                                        className="text-[#d8e4f0] font-semibold hover:text-[#00cfa8]"
+                                        className="text-[#d8e4f0] font-semibold hover:text-[#00cfa8] break-words"
                                     >
                                         {inquiry.businessTitle}
                                     </Link>
-                                    {statusBadge(inquiry.status)}
+                                    <div className="shrink-0">{statusBadge(inquiry.status)}</div>
                                 </div>
                                 <p className="text-[#8092ab] text-sm mb-2">
                                     From <span className="text-[#d8e4f0]">{inquiry.buyerName}</span>
                                 </p>
-                                <p className="text-[#8092ab] text-sm leading-6">{inquiry.initialMessage}</p>
+                                <p className="text-[#8092ab] text-sm leading-6 break-words">{inquiry.initialMessage}</p>
                                 <p className="text-[#4f6380] text-xs mt-3 mb-4">
                                     {new Date(inquiry.createdAt).toLocaleString()}
                                 </p>
 
                                 {inquiry.status === "PENDING_APPROVAL" ? (
-                                    <div className="flex gap-3">
+                                    <div className="flex flex-col sm:flex-row gap-3">
                                         <button
                                             onClick={() => respond(inquiry.id, "approve")}
                                             disabled={actingId === inquiry.id}
-                                            className="flex-1 bg-[#00cfa8] hover:bg-[#00e6bc] disabled:opacity-50 text-[#080c15] font-semibold py-2 rounded-xl text-sm"
+                                            className="flex-1 bg-[#00cfa8] hover:bg-[#00e6bc] disabled:opacity-50 text-[#080c15] font-semibold py-2.5 rounded-xl text-sm min-h-[44px] transition-colors"
                                         >
                                             Approve
                                         </button>
                                         <button
                                             onClick={() => respond(inquiry.id, "reject")}
                                             disabled={actingId === inquiry.id}
-                                            className="flex-1 border border-white/10 text-[#8092ab] py-2 rounded-xl text-sm"
+                                            className="flex-1 border border-white/10 text-[#8092ab] hover:text-white py-2.5 rounded-xl text-sm min-h-[44px] transition-colors"
                                         >
                                             Reject
                                         </button>
@@ -299,7 +247,7 @@ export default function SellerInquiriesPage() {
                                 ) : (
                                     <Link
                                         href={`/inquiries/${inquiry.id}`}
-                                        className="inline-block text-sm text-[#00cfa8] hover:underline"
+                                        className="inline-flex items-center text-sm text-[#00cfa8] hover:underline min-h-[40px]"
                                     >
                                         {inquiry.status === "ACTIVE" ? "Open chat →" : "View conversation →"}
                                     </Link>

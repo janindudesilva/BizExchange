@@ -165,9 +165,44 @@ public class InquiryService {
         User buyer = userRepository.findByEmail(buyerEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Buyer not found"));
 
-        return inquiryRepository.findByBuyerIdOrderByCreatedAtDesc(buyer.getId())
-                .stream()
-                .map(this::mapToResponse)
+        List<Inquiry> inquiries = inquiryRepository.findByBuyerIdOrderByCreatedAtDesc(buyer.getId());
+        if (inquiries.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> sellerIds = inquiries.stream()
+                .map(i -> i.getSeller().getId())
+                .distinct()
+                .toList();
+
+        java.util.Map<Long, Double> ratingsMap = new java.util.HashMap<>();
+        reviewRepository.findAverageRatingsBySellerIds(sellerIds).forEach(row ->
+                ratingsMap.put((Long) row[0], row[1] != null ? ((Number) row[1]).doubleValue() : 0.0)
+        );
+
+        java.util.Map<Long, Long> countsMap = new java.util.HashMap<>();
+        reviewRepository.findReviewCountsBySellerIds(sellerIds).forEach(row ->
+                countsMap.put((Long) row[0], row[1] != null ? ((Number) row[1]).longValue() : 0L)
+        );
+
+        java.util.Set<Long> reviewedSellerIds = reviewRepository.findReviewedSellerIdsByBuyerAndSellerIds(buyer.getId(), sellerIds);
+
+        return inquiries.stream()
+                .map(inquiry -> InquiryResponse.builder()
+                        .id(inquiry.getId())
+                        .businessId(inquiry.getBusiness().getId())
+                        .businessTitle(inquiry.getBusiness().getTitle())
+                        .buyerId(inquiry.getBuyer().getId())
+                        .buyerName(inquiry.getBuyer().getFullName())
+                        .sellerId(inquiry.getSeller().getId())
+                        .sellerName(inquiry.getSeller().getFullName())
+                        .initialMessage(inquiry.getInitialMessage())
+                        .status(inquiry.getStatus().name())
+                        .createdAt(inquiry.getCreatedAt())
+                        .hasReviewed(reviewedSellerIds.contains(inquiry.getSeller().getId()))
+                        .sellerRating(ratingsMap.getOrDefault(inquiry.getSeller().getId(), 0.0))
+                        .sellerReviewCount(countsMap.getOrDefault(inquiry.getSeller().getId(), 0L))
+                        .build())
                 .toList();
     }
 
@@ -175,9 +210,37 @@ public class InquiryService {
         User seller = userRepository.findByEmail(sellerEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Seller not found"));
 
-        return inquiryRepository.findBySellerIdOrderByCreatedAtDesc(seller.getId())
-                .stream()
-                .map(this::mapToResponse)
+        List<Inquiry> inquiries = inquiryRepository.findBySellerIdOrderByCreatedAtDesc(seller.getId());
+        if (inquiries.isEmpty()) {
+            return List.of();
+        }
+
+        Double sellerRating = reviewService.getSellerAverageRating(seller.getId());
+        Long sellerReviewCount = reviewService.getSellerReviewCount(seller.getId());
+
+        List<Long> buyerIds = inquiries.stream()
+                .map(i -> i.getBuyer().getId())
+                .distinct()
+                .toList();
+
+        java.util.Set<Long> reviewedBuyerIds = reviewRepository.findReviewedBuyerIdsBySellerAndBuyerIds(seller.getId(), buyerIds);
+
+        return inquiries.stream()
+                .map(inquiry -> InquiryResponse.builder()
+                        .id(inquiry.getId())
+                        .businessId(inquiry.getBusiness().getId())
+                        .businessTitle(inquiry.getBusiness().getTitle())
+                        .buyerId(inquiry.getBuyer().getId())
+                        .buyerName(inquiry.getBuyer().getFullName())
+                        .sellerId(inquiry.getSeller().getId())
+                        .sellerName(inquiry.getSeller().getFullName())
+                        .initialMessage(inquiry.getInitialMessage())
+                        .status(inquiry.getStatus().name())
+                        .createdAt(inquiry.getCreatedAt())
+                        .hasReviewed(reviewedBuyerIds.contains(inquiry.getBuyer().getId()))
+                        .sellerRating(sellerRating != null ? sellerRating : 0.0)
+                        .sellerReviewCount(sellerReviewCount != null ? sellerReviewCount : 0L)
+                        .build())
                 .toList();
     }
 
@@ -197,9 +260,9 @@ public class InquiryService {
 
     private InquiryResponse mapToResponse(Inquiry inquiry) {
         // Check if buyer has reviewed seller
-        Boolean hasReviewed = reviewRepository.findByBuyerIdAndSellerId(
+        Boolean hasReviewed = reviewRepository.existsByBuyerIdAndSellerId(
                 inquiry.getBuyer().getId(), inquiry.getSeller().getId()
-        ).isPresent();
+        );
 
         // Get seller rating information
         Double sellerRating = reviewService.getSellerAverageRating(inquiry.getSeller().getId());
@@ -217,8 +280,8 @@ public class InquiryService {
                 .status(inquiry.getStatus().name())
                 .createdAt(inquiry.getCreatedAt())
                 .hasReviewed(hasReviewed)
-                .sellerRating(sellerRating)
-                .sellerReviewCount(sellerReviewCount)
+                .sellerRating(sellerRating != null ? sellerRating : 0.0)
+                .sellerReviewCount(sellerReviewCount != null ? sellerReviewCount : 0L)
                 .build();
     }
 }

@@ -7,7 +7,13 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "reviews")
+@Table(name = "reviews", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_review_buyer_seller", columnNames = {"buyer_id", "seller_id"})
+}, indexes = {
+        @Index(name = "idx_reviews_seller_id", columnList = "seller_id"),
+        @Index(name = "idx_reviews_buyer_id", columnList = "buyer_id"),
+        @Index(name = "idx_reviews_created_at", columnList = "created_at DESC")
+})
 @Getter
 @Setter
 @NoArgsConstructor

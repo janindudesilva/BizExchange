@@ -2,6 +2,7 @@ package com.businessexchange.support.controller;
 
 import com.businessexchange.business.service.BusinessService;
 import com.businessexchange.common.response.ApiResponse;
+import com.businessexchange.common.util.AuthenticationUtil;
 import com.businessexchange.support.dto.EscalateRequest;
 import com.businessexchange.support.dto.LimitedBusinessView;
 import com.businessexchange.support.dto.LimitedUserView;
@@ -14,8 +15,6 @@ import com.businessexchange.user.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,6 +27,7 @@ public class AgentTicketController {
     private final TicketService ticketService;
     private final UserService userService;
     private final BusinessService businessService;
+    private final AuthenticationUtil authenticationUtil;
 
     @GetMapping("/assigned")
     @PreAuthorize("hasRole('SUPPORT_AGENT')")
@@ -52,7 +52,8 @@ public class AgentTicketController {
     public ApiResponse<TicketResponse> changeStatus(
             @PathVariable Long id,
             @RequestParam TicketStatus status) {
-        TicketResponse response = ticketService.updateStatus(id, status);
+        Long agentId = getCurrentUserId();
+        TicketResponse response = ticketService.updateStatus(id, status, agentId);
         return ApiResponse.success("Status updated", response);
     }
 
@@ -61,7 +62,8 @@ public class AgentTicketController {
     public ApiResponse<Void> escalate(
             @PathVariable Long id,
             @Valid @RequestBody EscalateRequest request) {
-        ticketService.escalateToAdmin(id, request.getReason());
+        Long agentId = getCurrentUserId();
+        ticketService.escalateToAdmin(id, request.getReason(), agentId);
         return ApiResponse.success("Escalated to admin", null);
     }
 
@@ -80,7 +82,6 @@ public class AgentTicketController {
     }
 
     private Long getCurrentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return Long.parseLong(authentication.getName());
+        return authenticationUtil.getCurrentUserId();
     }
 }
