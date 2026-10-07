@@ -43,6 +43,10 @@ public class User {
     @Column(name="email_verified", nullable = false)
     private Boolean emailVerified = false;
 
+    @Builder.Default
+    @Column(name = "token_version", nullable = false)
+    private Integer tokenVersion = 1;
+
     @Column(name="last_login_at")
     private LocalDateTime lastLoginAt;
 
@@ -63,6 +67,10 @@ public class User {
 
         if (emailVerified == null) {
             emailVerified = false;
+        }
+
+        if (tokenVersion == null) {
+            tokenVersion = 1;
         }
     }
 

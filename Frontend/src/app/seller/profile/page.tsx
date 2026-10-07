@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { apiRequest, apiUpload } from "@/lib/api";
+import { useEffect, useState, useCallback } from "react";
+import { apiRequest } from "@/lib/api";
 import SellerSidebar from "@/components/SellerSidebar";
 
 type VerificationStatus = "PENDING" | "APPROVED" | "REJECTED";
@@ -32,21 +31,7 @@ interface EditFormState {
     businessOwnerType: string;
 }
 
-const NAV_ITEMS: {
-    label: string;
-    href?: string;
-    badge?: number;
-}[] = [
-    { label: "Overview", href: "/seller/dashboard" },
-    { label: "My Listing", href: "/seller/businesses" },
-    { label: "Inquiries", href: "/seller/inquiries" },
-    { label: "Offers" },
-    { label: "Active Deals" },
-    { label: "Payments" },
-    { label: "Reviews" },
-    { label: "Support" },
-    { label: "Notifications" },
-];
+
 
 function initials(name: string | undefined): string {
     if (!name) return "?";
@@ -94,7 +79,7 @@ function toFormState(profile: SellerProfile): EditFormState {
 
 export default function SellerProfilePage() {
     const [profile, setProfile] = useState<SellerProfile | null>(null);
-    const [loaded, setLoaded] = useState(false);
+    const [loaded, setLoaded] = useState(() => typeof window !== "undefined" && !localStorage.getItem("userId"));
     const [error, setError] = useState<string | null>(null);
 
     const [isEditing, setIsEditing] = useState(false);
@@ -103,7 +88,7 @@ export default function SellerProfilePage() {
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
 
-    function loadProfile() {
+    const loadProfile = useCallback(() => {
         const userId = localStorage.getItem("userId");
         if (!userId) {
             setLoaded(true);
@@ -114,10 +99,27 @@ export default function SellerProfilePage() {
             .then((data) => setProfile(data))
             .catch((err) => setError(err.message || "Failed to load profile"))
             .finally(() => setLoaded(true));
-    }
+    }, []);
 
     useEffect(() => {
-        loadProfile();
+        let ignore = false;
+        const userId = localStorage.getItem("userId");
+        if (!userId) return;
+
+        apiRequest<SellerProfile>(`/seller/profile/${userId}`)
+            .then((data) => {
+                if (!ignore) setProfile(data);
+            })
+            .catch((err) => {
+                if (!ignore) setError(err.message || "Failed to load profile");
+            })
+            .finally(() => {
+                if (!ignore) setLoaded(true);
+            });
+
+        return () => {
+            ignore = true;
+        };
     }, []);
 
     const verificationStatus = profile?.verificationStatus ?? null;

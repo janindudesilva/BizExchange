@@ -28,23 +28,29 @@ public class AdminSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (userRepository.existsByEmail(adminEmail)) {
-            System.out.println("Admin account already exists: " + adminEmail);
-            return;
-        }
-
-        User admin = User.builder()
-                .fullName(adminFullName)
-                .email(adminEmail)
-                .phone("0700000000")
-                .passwordHash(passwordEncoder.encode(adminPassword))
-                .role(UserRole.ADMIN)
-                .status(AccountStatus.ACTIVE)
-                .emailVerified(true)
-                .build();
-
-        userRepository.save(admin);
-
-        System.out.println("Default admin account created: " + adminEmail);
+        userRepository.findByEmail(adminEmail).ifPresentOrElse(
+            existingAdmin -> {
+                if (adminPassword != null && !adminPassword.isBlank()) {
+                    existingAdmin.setPasswordHash(passwordEncoder.encode(adminPassword));
+                    existingAdmin.setStatus(AccountStatus.ACTIVE);
+                    existingAdmin.setEmailVerified(true);
+                    userRepository.save(existingAdmin);
+                    System.out.println("Admin account synchronized with configured password: " + adminEmail);
+                }
+            },
+            () -> {
+                User admin = User.builder()
+                        .fullName(adminFullName)
+                        .email(adminEmail)
+                        .phone("0700000000")
+                        .passwordHash(passwordEncoder.encode(adminPassword))
+                        .role(UserRole.ADMIN)
+                        .status(AccountStatus.ACTIVE)
+                        .emailVerified(true)
+                        .build();
+                userRepository.save(admin);
+                System.out.println("Default admin account created: " + adminEmail);
+            }
+        );
     }
 }

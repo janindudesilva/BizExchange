@@ -1,45 +1,49 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { apiRequest } from "@/lib/api";
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const token = searchParams.get("token");
-  const [status, setStatus] = useState<"loading" | "success" | "error" | "expired">("loading");
-  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState<"loading" | "success" | "error" | "expired">(token ? "loading" : "error");
+  const [message, setMessage] = useState(token ? "" : "No verification token found in link.");
 
   useEffect(() => {
-    if (token) {
-      verifyEmail();
-    } else {
-      setStatus("error");
-      setMessage("No verification token found in link.");
-    }
-  }, [token]);
+    if (!token) return;
+    let ignore = false;
 
-  const verifyEmail = async () => {
-    try {
-      await apiRequest("/auth/verify-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
-      });
-      setStatus("success");
-      setMessage("Your email has been verified successfully. Your account is now active!");
-    } catch (err: any) {
-      setStatus("error");
-      if (err.message?.includes("expired")) {
-        setStatus("expired");
-        setMessage("This verification token has expired. Please request a new verification link.");
-      } else {
-        setMessage(err.message || "Failed to verify email. Please try again.");
+    async function runVerification() {
+      try {
+        await apiRequest("/auth/verify-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+        if (!ignore) {
+          setStatus("success");
+          setMessage("Your email has been verified successfully. Your account is now active!");
+        }
+      } catch (err: unknown) {
+        if (ignore) return;
+        const errorMsg = err instanceof Error ? err.message : "Failed to verify email. Please try again.";
+        if (errorMsg.includes("expired")) {
+          setStatus("expired");
+          setMessage("This verification token has expired. Please request a new verification link.");
+        } else {
+          setStatus("error");
+          setMessage(errorMsg);
+        }
       }
     }
-  };
+
+    runVerification();
+    return () => {
+      ignore = true;
+    };
+  }, [token]);
 
   return (
     <div className="max-w-md w-full glass-panel rounded-2xl p-8 border border-white/10 shadow-2xl relative overflow-hidden">
@@ -68,12 +72,12 @@ function VerifyEmailContent() {
           </div>
           <h2 className="text-xl font-bold text-white mb-2">Email Verified!</h2>
           <p className="text-xs text-[#8493a8] mb-6 leading-relaxed">{message}</p>
-          <button
-            onClick={() => router.push("/login")}
-            className="w-full bg-[#00cfa8] text-[#070b14] py-3 rounded-xl font-semibold text-sm hover:bg-[#00e6bc] transition-all shadow-[0_0_16px_rgba(0,207,168,0.25)] hover:shadow-[0_0_24px_rgba(0,207,168,0.4)]"
+          <Link
+            href="/login"
+            className="block text-center w-full bg-[#00cfa8] text-[#070b14] py-3 rounded-xl font-semibold text-sm hover:bg-[#00e6bc] transition-all shadow-[0_0_16px_rgba(0,207,168,0.25)] hover:shadow-[0_0_24px_rgba(0,207,168,0.4)]"
           >
             Continue to Sign In
-          </button>
+          </Link>
         </div>
       )}
 

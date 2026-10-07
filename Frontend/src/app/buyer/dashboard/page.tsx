@@ -183,7 +183,7 @@ export default function BuyerDashboardPage() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [savedBusinesses, setSavedBusinesses] = useState<SavedBusiness[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [loaded, setLoaded] = useState(() => typeof window !== "undefined" && !localStorage.getItem("token"));
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -210,16 +210,17 @@ export default function BuyerDashboardPage() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
-      setLoaded(true);
       return;
     }
 
+    let ignore = false;
     Promise.allSettled([
       apiRequest<{ data: UserProfile }>("/users/me"),
       apiRequest<{ data: Inquiry[] }>("/inquiries/sent"),
       apiRequest<{ data: SavedBusiness[] }>("/favorites"),
       apiRequest<{ data: Ticket[] }>("/tickets/my"),
     ]).then(([profileRes, inquiriesRes, favoritesRes, ticketsRes]) => {
+      if (ignore) return;
       if (profileRes.status === "fulfilled") {
         setProfile(profileRes.value.data ?? (profileRes.value as unknown as UserProfile));
       }
@@ -234,6 +235,10 @@ export default function BuyerDashboardPage() {
       }
       setLoaded(true);
     });
+
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   /* Computed stats */

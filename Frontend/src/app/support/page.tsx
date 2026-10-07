@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 interface FAQItem {
   id: string;
@@ -87,7 +86,6 @@ const CATEGORIES = [
 ];
 
 export default function SupportPage() {
-  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [expandedFaq, setExpandedFaq] = useState<string | null>("faq-1");

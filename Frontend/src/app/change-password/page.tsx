@@ -1,17 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { apiRequest } from "@/lib/api";
 
-export default function ChangePasswordPage() {
+function ChangePasswordContent() {
   const router = useRouter();
-  const [step, setStep] = useState(1);
-  const [email, setEmail] = useState("");
-  const [otpCode, setOtpCode] = useState("");
+  const searchParams = useSearchParams();
+  const paramEmail = searchParams?.get("email") || "";
+  const paramToken = searchParams?.get("token") || searchParams?.get("resetToken") || "";
+  const paramOtp = searchParams?.get("otp") || searchParams?.get("otpCode") || "";
+
+  const [step, setStep] = useState(paramToken ? 3 : paramOtp ? 2 : 1);
+  const [email, setEmail] = useState(paramEmail);
+  const [otpCode, setOtpCode] = useState(paramOtp);
   const [otpExpiryMinutes, setOtpExpiryMinutes] = useState(5);
-  const [resetToken, setResetToken] = useState("");
+  const [resetToken, setResetToken] = useState(paramToken);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -275,5 +280,17 @@ export default function ChangePasswordPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function ChangePasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#080c15] flex items-center justify-center text-[#8493a8]">
+        <div className="w-5 h-5 border-2 border-[#00cfa8] border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <ChangePasswordContent />
+    </Suspense>
   );
 }

@@ -57,11 +57,15 @@ export default function SellerSidebar({
 }: SellerSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const [profile, setProfile] = useState<SellerProfile | null>(propProfile || null);
-  const [inquiriesCount, setInquiriesCount] = useState(propBadges?.inquiries || 0);
-  const [dealsCount, setDealsCount] = useState(propBadges?.deals || 0);
-  const [ticketsCount, setTicketsCount] = useState(propBadges?.tickets || 0);
-  const [unreadNotifCount, setUnreadNotifCount] = useState(propBadges?.notifications || 0);
+  const [profile, setProfile] = useState<SellerProfile | null | undefined>(propProfile);
+  const [fetchedInquiriesCount, setFetchedInquiriesCount] = useState(0);
+  const [fetchedTicketsCount, setFetchedTicketsCount] = useState(0);
+  const [fetchedNotifCount, setFetchedNotifCount] = useState(0);
+
+  const inquiriesCount = propBadges?.inquiries ?? fetchedInquiriesCount;
+  const ticketsCount = propBadges?.tickets ?? fetchedTicketsCount;
+  const [unreadNotifCountOverride, setUnreadNotifCountOverride] = useState<number | null>(null);
+  const unreadNotifCount = unreadNotifCountOverride ?? (propBadges?.notifications ?? fetchedNotifCount);
 
   // Notification slide-over state
   const [notifDrawerOpen, setNotifDrawerOpen] = useState(false);
@@ -71,45 +75,55 @@ export default function SellerSidebar({
   useEffect(() => {
     if (propProfile) {
       setProfile(propProfile);
-    } else {
-      const userId = localStorage.getItem("userId");
-      if (userId) {
-        apiRequest<SellerProfile>(`/seller/profile/${userId}`)
-          .then((res) => setProfile(res))
-          .catch(() => {});
-      }
+      return;
     }
+    let ignore = false;
+    const userId = typeof window !== "undefined" ? localStorage.getItem("userId") : null;
+    if (userId) {
+      apiRequest<SellerProfile>(`/seller/profile/${userId}`)
+        .then((res) => {
+          if (!ignore && res) setProfile(res);
+        })
+        .catch(() => {});
+    }
+    return () => {
+      ignore = true;
+    };
   }, [propProfile]);
 
   useEffect(() => {
-    if (propBadges) {
-      if (propBadges.inquiries !== undefined) setInquiriesCount(propBadges.inquiries);
-      if (propBadges.deals !== undefined) setDealsCount(propBadges.deals);
-      if (propBadges.tickets !== undefined) setTicketsCount(propBadges.tickets);
-      if (propBadges.notifications !== undefined) setUnreadNotifCount(propBadges.notifications);
-    } else {
-      // Auto-fetch badge counts if not passed
-      apiRequest<{ data: any[] }>("/inquiries/received")
-        .then((res) => {
-          const inqs = res.data || [];
-          setInquiriesCount(inqs.filter((i) => i.status === "PENDING_APPROVAL").length);
-          setDealsCount(inqs.filter((i) => i.status === "ACTIVE").length);
-        })
-        .catch(() => {});
+    if (propBadges) return;
+    let ignore = false;
 
-      apiRequest<{ data: any[] }>("/tickets/my")
-        .then((res) => {
-          const t = res.data || [];
-          setTicketsCount(
-            t.filter((item) => item.status !== "RESOLVED" && item.status !== "CLOSED").length
-          );
-        })
-        .catch(() => {});
+    // Auto-fetch badge counts if not passed
+    apiRequest<{ data: { status: string }[] }>("/inquiries/received")
+      .then((res) => {
+        if (ignore) return;
+        const inqs = res.data || [];
+        setFetchedInquiriesCount(inqs.filter((i) => i.status === "PENDING_APPROVAL").length);
+      })
+      .catch(() => {});
 
-      apiRequest<{ data: number }>("/notifications/unread/count")
-        .then((res) => setUnreadNotifCount(res.data || 0))
-        .catch(() => {});
-    }
+    apiRequest<{ data: { status: string }[] }>("/tickets/my")
+      .then((res) => {
+        if (ignore) return;
+        const t = res.data || [];
+        setFetchedTicketsCount(
+          t.filter((item) => item.status !== "RESOLVED" && item.status !== "CLOSED").length
+        );
+      })
+      .catch(() => {});
+
+    apiRequest<{ data: number }>("/notifications/unread/count")
+      .then((res) => {
+        if (ignore) return;
+        setFetchedNotifCount(res.data || 0);
+      })
+      .catch(() => {});
+
+    return () => {
+      ignore = true;
+    };
   }, [propBadges]);
 
   const fetchNotificationsList = async () => {
@@ -139,7 +153,9 @@ export default function SellerSidebar({
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, status: "READ" } : n))
       );
-      setUnreadNotifCount((prev) => Math.max(0, prev - 1));
+      setUnreadNotifCountOverride((prev) =>
+        Math.max(0, (prev ?? (propBadges?.notifications ?? fetchedNotifCount)) - 1)
+      );
       if (link) {
         setNotifDrawerOpen(false);
         router.push(link);
@@ -153,7 +169,7 @@ export default function SellerSidebar({
     try {
       await apiRequest("/notifications/read-all", { method: "PUT" });
       setNotifications((prev) => prev.map((n) => ({ ...n, status: "READ" })));
-      setUnreadNotifCount(0);
+      setUnreadNotifCountOverride(0);
     } catch {
       // ignore
     }
@@ -175,18 +191,6 @@ export default function SellerSidebar({
       href: "/seller/inquiries",
       badge: inquiriesCount > 0 ? inquiriesCount : undefined,
       isActive: pathname === "/seller/inquiries",
-    },
-    {
-      label: "Offers",
-      href: "/seller/inquiries",
-      badge: inquiriesCount > 0 ? inquiriesCount : undefined,
-      isActive: false,
-    },
-    {
-      label: "Active Deals",
-      href: "/seller/inquiries",
-      badge: dealsCount > 0 ? dealsCount : undefined,
-      isActive: false,
     },
     {
       label: "Support",

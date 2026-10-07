@@ -28,9 +28,10 @@ public class BusinessFileService {
     private final BusinessFileRepository fileRepository;
     private final BusinessRepository businessRepository;
     private final UserRepository userRepository;
+    private final com.businessexchange.verification.repository.VerificationRequestRepository verificationRequestRepository;
 
     private static final int MAX_FILES_PER_REQUEST = 10;
-    private static final long MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15MB
+    private static final long MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB (consistent across frontend and application properties)
 
     @Transactional
     public List<BusinessFileResponse> uploadFiles(
@@ -83,11 +84,8 @@ public class BusinessFileService {
             for (MultipartFile file : financialReports) saveFile(business, file, BusinessFile.FileType.FINANCIAL_REPORT);
         }
 
-        // Reset approved business to PENDING_REVIEW so newly uploaded files undergo admin verification
-        if (business.getStatus() == com.businessexchange.business.entity.BusinessStatus.APPROVED) {
-            business.setStatus(com.businessexchange.business.entity.BusinessStatus.PENDING_REVIEW);
-            businessRepository.save(business);
-        }
+        // File additions on approved business trigger required re-review
+        triggerReReviewIfApproved(business);
 
         return getFilesForBusiness(businessId, callerEmail);
     }
@@ -98,7 +96,7 @@ public class BusinessFileService {
         }
 
         if (file.getSize() > MAX_FILE_SIZE_BYTES) {
-            throw new IllegalArgumentException("File " + file.getOriginalFilename() + " exceeds maximum allowed size of 15MB");
+            throw new IllegalArgumentException("File " + file.getOriginalFilename() + " exceeds maximum allowed size of 20MB");
         }
 
         byte[] bytes = file.getBytes();
@@ -114,10 +112,12 @@ public class BusinessFileService {
                 .build());
     }
 
+    @Transactional(readOnly = true)
     public ResponseEntity<byte[]> serveFile(Long fileId) {
         return serveFile(fileId, null);
     }
 
+    @Transactional(readOnly = true)
     public ResponseEntity<byte[]> serveFile(Long fileId, String callerEmail) {
         BusinessFile file = fileRepository.findById(fileId)
                 .orElseThrow(() -> new ResourceNotFoundException("File not found"));
@@ -153,10 +153,12 @@ public class BusinessFileService {
                 .body(file.getData());
     }
 
+    @Transactional(readOnly = true)
     public List<BusinessFileResponse> getFilesForBusiness(Long businessId) {
         return getFilesForBusiness(businessId, null);
     }
 
+    @Transactional(readOnly = true)
     public List<BusinessFileResponse> getFilesForBusiness(Long businessId, String callerEmail) {
         List<BusinessFile> allFiles = fileRepository.findByBusinessId(businessId);
         if (allFiles.isEmpty()) {
@@ -207,6 +209,35 @@ public class BusinessFileService {
         }
 
         fileRepository.delete(file);
+
+        // File deletions on approved business trigger required re-review
+        triggerReReviewIfApproved(file.getBusiness());
+    }
+
+    private void triggerReReviewIfApproved(Business business) {
+        if (business == null) return;
+        if (business.getStatus() == com.businessexchange.business.entity.BusinessStatus.APPROVED
+                || business.getVerificationStatus() == com.businessexchange.seller.entity.VerificationStatus.APPROVED) {
+            business.setStatus(com.businessexchange.business.entity.BusinessStatus.PENDING_REVIEW);
+            business.setVerificationStatus(com.businessexchange.seller.entity.VerificationStatus.PENDING);
+            business.setApprovedBy(null);
+            business.setApprovedAt(null);
+            business.setRejectionReason(null);
+            businessRepository.save(business);
+
+            verificationRequestRepository.findByBusinessId(business.getId()).ifPresentOrElse(vr -> {
+                vr.setStatus(com.businessexchange.seller.entity.VerificationStatus.PENDING);
+                vr.setOfficer(null);
+                vr.setRemarks(null);
+                vr.setVerifiedAt(null);
+                verificationRequestRepository.save(vr);
+            }, () -> {
+                verificationRequestRepository.save(com.businessexchange.verification.entity.VerificationRequest.builder()
+                        .business(business)
+                        .status(com.businessexchange.seller.entity.VerificationStatus.PENDING)
+                        .build());
+            });
+        }
     }
 
     public List<BusinessFileResponse> findAllDocumentsBySellerId(Long sellerId) {

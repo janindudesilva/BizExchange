@@ -24,19 +24,27 @@ export default function AgentDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchAssignedTickets();
-  }, []);
-
-  const fetchAssignedTickets = async () => {
-    try {
-      const response = await apiRequest<{ data: Ticket[] }>("/agent/tickets/assigned");
-      setTickets(response.data || []);
-    } catch (err) {
-      console.error("Failed to fetch tickets", err);
-    } finally {
-      setLoading(false);
+    let ignore = false;
+    async function loadTickets() {
+      try {
+        const response = await apiRequest<{ data: Ticket[] }>("/agent/tickets/assigned");
+        if (!ignore) {
+          setTickets(response.data || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch tickets", err);
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
     }
-  };
+
+    loadTickets();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {

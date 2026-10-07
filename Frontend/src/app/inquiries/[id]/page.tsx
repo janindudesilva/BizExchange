@@ -25,39 +25,49 @@ export default function InquiryThreadPage() {
     const [sending, setSending] = useState(false);
     const [acting, setActing] = useState(false);
 
-    const [currentUserId, setCurrentUserId] = useState<number | null>(null);
-    const [role, setRole] = useState<string | null>(null);
+    const [currentUserId] = useState<number | null>(() => {
+        if (typeof window === "undefined") return null;
+        const storedId = localStorage.getItem("userId");
+        return storedId ? Number(storedId) : null;
+    });
+    const [role] = useState<string | null>(() => {
+        if (typeof window === "undefined") return null;
+        return localStorage.getItem("role");
+    });
     const bottomRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const storedId = localStorage.getItem("userId");
-        if (storedId) setCurrentUserId(Number(storedId));
-        setRole(localStorage.getItem("role"));
-    }, []);
+        let ignore = false;
+        const loadThread = async () => {
+            try {
+                const [inquiryRes, msgRes] = await Promise.all([
+                    apiRequest<SingleInquiryApiResponse>(`/inquiries/${inquiryId}`),
+                    apiRequest<MessageApiResponse>(`/inquiries/${inquiryId}/messages`),
+                ]);
+                if (!ignore) {
+                    setInquiry(inquiryRes.data);
+                    setMessages(msgRes.data);
+                }
+            } catch (err) {
+                if (!ignore) {
+                    setError(err instanceof Error ? err.message : "Could not load this conversation");
+                }
+            } finally {
+                if (!ignore) {
+                    setLoading(false);
+                }
+            }
+        };
 
-    useEffect(() => {
-        fetchThread();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        loadThread();
+        return () => {
+            ignore = true;
+        };
     }, [inquiryId]);
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
-
-    const fetchThread = async () => {
-        try {
-            const [inquiryRes, msgRes] = await Promise.all([
-                apiRequest<SingleInquiryApiResponse>(`/inquiries/${inquiryId}`),
-                apiRequest<MessageApiResponse>(`/inquiries/${inquiryId}/messages`),
-            ]);
-            setInquiry(inquiryRes.data);
-            setMessages(msgRes.data);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Could not load this conversation");
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleSend = async () => {
         if (!draft.trim()) return;

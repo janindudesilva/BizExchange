@@ -26,7 +26,7 @@ export default function SellersPage() {
   useEffect(() => {
     const fetchSellers = async () => {
       try {
-        const res = await apiRequest<any>("/admin/sellers");
+        const res = await apiRequest<Seller[] | { data?: Seller[] }>("/admin/sellers");
         const list: Seller[] = Array.isArray(res) ? res : (res?.data || []);
         setSellers(list);
       } catch (err) {

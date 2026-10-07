@@ -51,6 +51,7 @@ public class UserService {
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.setTokenVersion((user.getTokenVersion() != null ? user.getTokenVersion() : 1) + 1);
         userRepository.save(user);
     }
 
@@ -76,7 +77,7 @@ public class UserService {
     /**
      * Verify OTP status
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public boolean verifyOtp(String email, String otpCode) {
         return otpService.verifyOtp(email, otpCode);
     }
@@ -104,8 +105,9 @@ public class UserService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        // Update password
+        // Update password and invalidate previous sessions
         user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setTokenVersion((user.getTokenVersion() != null ? user.getTokenVersion() : 1) + 1);
         userRepository.save(user);
         log.info("Password changed successfully for user: {}", email);
 

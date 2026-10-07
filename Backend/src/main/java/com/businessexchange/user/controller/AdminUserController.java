@@ -19,6 +19,7 @@ import java.util.List;
 public class AdminUserController {
 
     private final UserRepository userRepository;
+    private final com.businessexchange.common.audit.service.AuditService auditService;
 
     @GetMapping
     public ApiResponse<List<UserResponse>> getAllUsers() {
@@ -44,6 +45,7 @@ public class AdminUserController {
 
         user.setStatus(AccountStatus.SUSPENDED);
         userRepository.save(user);
+        auditService.record(null, "USER_SUSPENDED", "USER", userId, "User suspended: " + user.getEmail());
 
         return ApiResponse.success("User suspended successfully", null);
     }
@@ -68,11 +70,13 @@ public class AdminUserController {
         if (Boolean.FALSE.equals(user.getEmailVerified())) {
             user.setStatus(AccountStatus.PENDING_VERIFICATION);
             userRepository.save(user);
+            auditService.record(null, "USER_UNSUSPENDED", "USER", userId, "User unsuspended to PENDING_VERIFICATION: " + user.getEmail());
             return ApiResponse.success("User unsuspended — returned to PENDING_VERIFICATION (email not verified)", null);
         }
 
         user.setStatus(AccountStatus.ACTIVE);
         userRepository.save(user);
+        auditService.record(null, "USER_UNSUSPENDED", "USER", userId, "User unsuspended to ACTIVE: " + user.getEmail());
 
         return ApiResponse.success("User unsuspended successfully", null);
     }

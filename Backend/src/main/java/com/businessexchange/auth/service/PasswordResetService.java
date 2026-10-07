@@ -27,17 +27,20 @@ public class PasswordResetService {
     private final PasswordResetRequestRepository resetRepository;
     private final ResendEmailService emailService;
     private final PasswordEncoder passwordEncoder;
+    private final com.businessexchange.user.service.OtpAttemptService otpAttemptService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public PasswordResetService(
             UserRepository userRepository,
             PasswordResetRequestRepository resetRepository,
             ResendEmailService emailService,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            com.businessexchange.user.service.OtpAttemptService otpAttemptService) {
         this.userRepository = userRepository;
         this.resetRepository = resetRepository;
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
+        this.otpAttemptService = otpAttemptService;
     }
 
     @Transactional
@@ -84,20 +87,23 @@ public class PasswordResetService {
                 .orElseThrow(() -> new BadCredentialsException("Invalid code"));
 
         if (reset.isUsed()) {
-            throw new BadCredentialsException("Invalid code");
+            throw new BadCredentialsException("Code has already been used. Please request a new code.");
         }
         if (reset.getAttemptCount() >= MAX_ATTEMPTS) {
-            throw new BadCredentialsException("Too many attempts");
+            throw new BadCredentialsException("Too many failed attempts. Please request a new code.");
         }
         if (reset.getOtpExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new BadCredentialsException("Code expired");
+            throw new BadCredentialsException("Code has expired. Please request a new code.");
         }
 
-        reset.setAttemptCount(reset.getAttemptCount() + 1);
-
         if (!passwordEncoder.matches(otp, reset.getOtpHash())) {
-            resetRepository.save(reset);
-            throw new BadCredentialsException("Invalid code");
+            // Commit incremented attempt count in an isolated transaction so it persists on failure
+            int currentAttempts = otpAttemptService.incrementPasswordResetOtpAttempt(reset.getId());
+            int remaining = MAX_ATTEMPTS - currentAttempts;
+            if (remaining <= 0) {
+                throw new BadCredentialsException("Too many failed attempts. Please request a new code.");
+            }
+            throw new BadCredentialsException("Invalid code. " + remaining + " attempt(s) remaining.");
         }
 
         reset.setVerified(true);
@@ -124,6 +130,7 @@ public class PasswordResetService {
                 .orElseThrow(() -> new IllegalStateException("User not found"));
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setTokenVersion((user.getTokenVersion() != null ? user.getTokenVersion() : 1) + 1);
         userRepository.save(user);
 
         reset.setUsed(true);

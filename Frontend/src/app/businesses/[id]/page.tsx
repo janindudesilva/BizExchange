@@ -1,6 +1,8 @@
 import Link from "next/link";
+import Image from "next/image";
 import { SingleBusinessApiResponse, BusinessFile } from "@/types/business";
 import SendInquiryButton from "@/components/SendInquiryButton";
+import AuthenticatedFileLink from "@/components/AuthenticatedFileLink";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
 
@@ -130,9 +132,12 @@ export default async function BusinessDetailsPage({
                 rel="noopener noreferrer"
                 className="block relative rounded-xl sm:rounded-2xl overflow-hidden group cursor-zoom-in"
               >
-                <img
+                <Image
                   src={`${API}${images[0].url}`}
                   alt={images[0].originalName}
+                  width={800}
+                  height={450}
+                  unoptimized
                   className="w-full h-60 sm:h-96 object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#070b14]/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
@@ -152,9 +157,12 @@ export default async function BusinessDetailsPage({
                       rel="noopener noreferrer"
                       className="relative block rounded-xl overflow-hidden aspect-video border border-white/5 hover:border-[#00cfa8]/50 transition-colors"
                     >
-                      <img
+                      <Image
                         src={`${API}${img.url}`}
                         alt={img.originalName}
+                        width={400}
+                        height={225}
+                        unoptimized
                         className="w-full h-full object-cover"
                       />
                       {i === 3 && images.length > 5 && (
@@ -207,20 +215,11 @@ export default async function BusinessDetailsPage({
                   </div>
                   <div className="space-y-2">
                     {documents.map((doc) => (
-                      <a
+                      <AuthenticatedFileLink
                         key={doc.id}
-                        href={`${API}${doc.url}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 hover:border-[#00cfa8]/30 transition-all group"
-                      >
-                        <span className="text-xs text-[#8493a8] group-hover:text-white truncate max-w-[200px]">
-                          {doc.originalName}
-                        </span>
-                        <svg className="w-3.5 h-3.5 text-[#52637a] group-hover:text-[#00cfa8] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </a>
+                        url={doc.url}
+                        originalName={doc.originalName}
+                      />
                     ))}
                   </div>
                 </div>
@@ -239,20 +238,11 @@ export default async function BusinessDetailsPage({
                   </div>
                   <div className="space-y-2">
                     {financial.map((doc) => (
-                      <a
+                      <AuthenticatedFileLink
                         key={doc.id}
-                        href={`${API}${doc.url}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 hover:border-[#00cfa8]/30 transition-all group"
-                      >
-                        <span className="text-xs text-[#8493a8] group-hover:text-white truncate max-w-[200px]">
-                          {doc.originalName}
-                        </span>
-                        <svg className="w-3.5 h-3.5 text-[#52637a] group-hover:text-[#00cfa8] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </a>
+                        url={doc.url}
+                        originalName={doc.originalName}
+                      />
                     ))}
                   </div>
                 </div>

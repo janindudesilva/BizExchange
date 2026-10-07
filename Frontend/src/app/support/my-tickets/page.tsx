@@ -26,25 +26,35 @@ export default function MyTicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [isSeller, setIsSeller] = useState(false);
+  const [isSeller] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("role") === "SELLER";
+    }
+    return false;
+  });
 
   useEffect(() => {
-    fetchMyTickets();
-    if (typeof window !== "undefined" && localStorage.getItem("role") === "SELLER") {
-      setIsSeller(true);
+    let ignore = false;
+    async function fetchMyTickets() {
+      try {
+        const response = await apiRequest<{ data: Ticket[] }>("/tickets/my");
+        if (!ignore) {
+          setTickets(response.data || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch tickets", err);
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
     }
-  }, []);
 
-  const fetchMyTickets = async () => {
-    try {
-      const response = await apiRequest<{ data: Ticket[] }>("/tickets/my");
-      setTickets(response.data || []);
-    } catch (err) {
-      console.error("Failed to fetch tickets", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    fetchMyTickets();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {

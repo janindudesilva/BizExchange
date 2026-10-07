@@ -24,6 +24,7 @@ public class OtpService {
     private final UserRepository userRepository;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
+    private final OtpAttemptService otpAttemptService;
 
     @Value("${app.otp.expiry.minutes:10}")
     private int otpExpiryMinutes;
@@ -83,6 +84,10 @@ public class OtpService {
                 .findFirstByUserIdAndUsedFalseOrderByCreatedAtDesc(user.getId())
                 .orElseThrow(() -> new RuntimeException("No active OTP found. Please request a new OTP."));
 
+        if (Boolean.TRUE.equals(otp.getUsed())) {
+            throw new RuntimeException("OTP has already been used. Please request a new OTP.");
+        }
+
         // Check expiry first (cheap check before BCrypt)
         if (otp.isExpired()) {
             throw new RuntimeException("OTP has expired. Please request a new OTP.");
@@ -93,14 +98,15 @@ public class OtpService {
             throw new RuntimeException("Too many failed attempts. Please request a new OTP.");
         }
 
-        // Increment attempt counter regardless of outcome
-        otp.setAttemptCount(otp.getAttemptCount() + 1);
-        otpRepository.save(otp);
-
         // BCrypt verification
         if (!passwordEncoder.matches(otpCode, otp.getOtpHash())) {
-            int remaining = maxAttempts - otp.getAttemptCount();
-            log.warn("Invalid OTP attempt for user: {} ({} attempts remaining)", email, remaining);
+            // Persist attempt counter in isolated transaction so it is committed despite subsequent exception
+            int currentAttempts = otpAttemptService.incrementPasswordChangeOtpAttempt(otp.getId());
+            int remaining = maxAttempts - currentAttempts;
+            log.warn("Invalid OTP attempt for user: {} ({} attempts remaining)", email, Math.max(0, remaining));
+            if (remaining <= 0) {
+                throw new RuntimeException("Too many failed attempts. Please request a new OTP.");
+            }
             throw new RuntimeException("Invalid OTP. " + remaining + " attempt(s) remaining.");
         }
 

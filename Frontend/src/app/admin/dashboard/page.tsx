@@ -21,79 +21,96 @@ interface AnalyticsSummary {
     averageRating: number;
 }
 
+const accentClassMap: Record<string, string> = {
+  "text-[#00cfa8]": "stat-card-accent-teal",
+  "text-[#3b82f6]": "stat-card-accent-blue",
+  "text-[#f59e0b]": "stat-card-accent-amber",
+  "text-[#8b5cf6]": "stat-card-accent-rose",
+  "text-[#10b981]": "stat-card-accent-teal",
+  "text-[#ec4899]": "stat-card-accent-rose",
+  "text-[#4f6380]": "stat-card-accent-blue",
+};
+
+const StatCard = ({ title, value, subtitle, color }: { title: string; value: number; subtitle: string; color: string }) => (
+  <div className={`glass-panel ${accentClassMap[color] ?? ""} p-4 sm:p-6 rounded-2xl`}>
+    <div className="text-[11px] tracking-[0.1em] text-[#4f6380] mb-2">{title}</div>
+    <div className={`text-2xl sm:text-3xl font-bold mb-1 tabular-nums ${color}`}>{value.toLocaleString()}</div>
+    <div className="text-xs sm:text-sm text-[#8092ab]">{subtitle}</div>
+  </div>
+);
+
+const PieChart = ({ data }: { data: { label: string; value: number; color: string }[] }) => {
+  const total = data.reduce((sum, item) => sum + item.value, 0);
+
+  const slices = data.reduce<{
+    segments: Array<{ item: { label: string; value: number; color: string }; angle: number; startAngle: number; endAngle: number }>;
+    angleSoFar: number;
+  }>(
+    (acc, item) => {
+      const percentage = total > 0 ? item.value / total : 0;
+      const angle = percentage * 360;
+      acc.segments.push({
+        item,
+        angle,
+        startAngle: acc.angleSoFar,
+        endAngle: acc.angleSoFar + angle,
+      });
+      acc.angleSoFar += angle;
+      return acc;
+    },
+    { segments: [], angleSoFar: 0 }
+  ).segments;
+
+  return (
+    <svg viewBox="0 0 100 100" className="w-28 h-28 sm:w-32 sm:h-32 shrink-0">
+      {slices.map(({ item, angle, startAngle, endAngle }) => {
+        const x1 = 50 + 40 * Math.cos((Math.PI / 180) * startAngle);
+        const y1 = 50 + 40 * Math.sin((Math.PI / 180) * startAngle);
+        const x2 = 50 + 40 * Math.cos((Math.PI / 180) * endAngle);
+        const y2 = 50 + 40 * Math.sin((Math.PI / 180) * endAngle);
+        const largeArcFlag = angle > 180 ? 1 : 0;
+
+        return (
+          <path
+            key={item.label}
+            d={`M 50 50 L ${x1} ${y1} A 40 40 0 ${largeArcFlag} 1 ${x2} ${y2} Z`}
+            fill={item.color}
+            stroke="#121c32"
+            strokeWidth="2"
+          />
+        );
+      })}
+    </svg>
+  );
+};
+
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchAnalytics();
-  }, []);
-
-  const fetchAnalytics = async () => {
-    try {
-      const response = await apiRequest<{ data: AnalyticsSummary }>("/admin/analytics/summary");
-      setAnalytics(response.data);
-    } catch (err) {
-      console.error("Failed to fetch analytics", err);
-    } finally {
-      setLoading(false);
+    let ignore = false;
+    async function loadData() {
+      try {
+        const response = await apiRequest<{ data: AnalyticsSummary }>("/admin/analytics/summary");
+        if (!ignore) {
+          setAnalytics(response.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch analytics", err);
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
     }
-  };
 
-  const accentClassMap: Record<string, string> = {
-    "text-[#00cfa8]": "stat-card-accent-teal",
-    "text-[#3b82f6]": "stat-card-accent-blue",
-    "text-[#f59e0b]": "stat-card-accent-amber",
-    "text-[#8b5cf6]": "stat-card-accent-rose",
-    "text-[#10b981]": "stat-card-accent-teal",
-    "text-[#ec4899]": "stat-card-accent-rose",
-    "text-[#4f6380]": "stat-card-accent-blue",
-  };
-
-  const StatCard = ({ title, value, subtitle, color }: { title: string; value: number; subtitle: string; color: string }) => (
-    <div className={`glass-panel ${accentClassMap[color] ?? ""} p-4 sm:p-6 rounded-2xl`}>
-      <div className="text-[11px] tracking-[0.1em] text-[#4f6380] mb-2">{title}</div>
-      <div className={`text-2xl sm:text-3xl font-bold mb-1 tabular-nums ${color}`}>{value.toLocaleString()}</div>
-      <div className="text-xs sm:text-sm text-[#8092ab]">{subtitle}</div>
-    </div>
-  );
-
-  const PieChart = ({ data }: { data: { label: string; value: number; color: string }[] }) => {
-    const total = data.reduce((sum, item) => sum + item.value, 0);
-    let currentAngle = 0;
-    
-    const paths = data.map((item) => {
-      const percentage = item.value / total;
-      const angle = percentage * 360;
-      const startAngle = currentAngle;
-      const endAngle = currentAngle + angle;
-      currentAngle += angle;
-
-      const x1 = 50 + 40 * Math.cos((Math.PI / 180) * startAngle);
-      const y1 = 50 + 40 * Math.sin((Math.PI / 180) * startAngle);
-      const x2 = 50 + 40 * Math.cos((Math.PI / 180) * endAngle);
-      const y2 = 50 + 40 * Math.sin((Math.PI / 180) * endAngle);
-
-      const largeArcFlag = angle > 180 ? 1 : 0;
-
-      return (
-        <path
-          key={item.label}
-          d={`M 50 50 L ${x1} ${y1} A 40 40 0 ${largeArcFlag} 1 ${x2} ${y2} Z`}
-          fill={item.color}
-          stroke="#121c32"
-          strokeWidth="2"
-        />
-      );
-    });
-
-    return (
-      <svg viewBox="0 0 100 100" className="w-28 h-28 sm:w-32 sm:h-32 shrink-0">
-        {paths}
-      </svg>
-    );
-  };
+    loadData();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   return (
     <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">

@@ -18,4 +18,8 @@ public interface PasswordChangeOtpRepository extends JpaRepository<PasswordChang
 
     // Count OTP generation requests for rate limiting
     long countByUserIdAndCreatedAtAfter(Long userId, LocalDateTime createdAfter);
+
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("UPDATE PasswordChangeOtp o SET o.attemptCount = o.attemptCount + 1 WHERE o.id = :id")
+    int incrementAttempts(@org.springframework.data.repository.query.Param("id") Long id);
 }

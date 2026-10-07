@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { apiRequest } from "@/lib/api";
 
 interface Category {
@@ -22,11 +22,7 @@ export default function AdminCategoriesPage() {
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       setError("");
       // Public GET /api/categories returns ApiResponse<List<CategoryResponse>>
@@ -37,7 +33,32 @@ export default function AdminCategoriesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+    async function loadData() {
+      try {
+        const response = await apiRequest<{ data: Category[] }>("/categories");
+        if (!ignore) {
+          setCategories(response.data || []);
+        }
+      } catch (err) {
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : "Could not load categories");
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadData();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const handleEdit = (category: Category) => {
     setEditingCategory(category);

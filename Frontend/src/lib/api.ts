@@ -72,3 +72,61 @@ export async function apiUpload<T>(
 
   return data as T;
 }
+
+export async function downloadAuthenticatedFile(
+  fileUrlOrEndpoint: string,
+  suggestedFilename?: string
+): Promise<void> {
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const fullUrl = fileUrlOrEndpoint.startsWith("http")
+    ? fileUrlOrEndpoint
+    : `${API_BASE_URL}${fileUrlOrEndpoint.startsWith("/") ? "" : "/"}${fileUrlOrEndpoint}`;
+
+  const response = await fetch(fullUrl, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    throw new ApiError("Failed to download file", response.status);
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  if (suggestedFilename) {
+    a.download = suggestedFilename;
+  }
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+}
+
+export async function openAuthenticatedFile(
+  fileUrlOrEndpoint: string
+): Promise<void> {
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const fullUrl = fileUrlOrEndpoint.startsWith("http")
+    ? fileUrlOrEndpoint
+    : `${API_BASE_URL}${fileUrlOrEndpoint.startsWith("/") ? "" : "/"}${fileUrlOrEndpoint}`;
+
+  const response = await fetch(fullUrl, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    throw new ApiError("Failed to open file", response.status);
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  window.open(url, "_blank");
+  setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+}

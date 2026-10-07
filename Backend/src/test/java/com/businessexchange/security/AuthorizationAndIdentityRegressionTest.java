@@ -66,6 +66,8 @@ class AuthorizationAndIdentityRegressionTest {
     // TicketService dependencies
     @Mock
     private SupportTicketRepository ticketRepository;
+    @Mock
+    private com.businessexchange.common.audit.service.AuditService auditService;
 
     @InjectMocks
     private TicketService ticketService;

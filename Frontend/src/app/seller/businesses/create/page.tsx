@@ -2,22 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { apiRequest, apiUpload } from "@/lib/api";
 import SellerSidebar from "@/components/SellerSidebar";
 
-// ── Nav items (same as dashboard) ──────────────────────────────────────────
-const NAV_ITEMS: { label: string; href?: string }[] = [
-  { label: "Overview", href: "/seller/dashboard" },
-  { label: "My Listing", href: "/seller/businesses" },
-  { label: "Inquiries", href: "/seller/inquiries" },
-  { label: "Offers" },
-  { label: "Active Deals" },
-  { label: "Payments" },
-  { label: "Reviews" },
-  { label: "Support" },
-  { label: "Notifications" },
-];
+
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 function initials(name: string | undefined): string {
@@ -56,11 +45,20 @@ function FileDropZone({
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
+  const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+
   const addUnique = (incoming: File[]) => {
-    const unique = incoming.filter(
-      (f) => !files.find((x) => x.name === f.name && x.size === f.size)
-    );
-    if (unique.length) onAdd(unique);
+    const valid: File[] = [];
+    for (const f of incoming) {
+      if (f.size > MAX_FILE_SIZE) {
+        alert(`File "${f.name}" (${fmtSize(f.size)}) exceeds the maximum allowed limit of 20 MB.`);
+        continue;
+      }
+      if (!files.find((x) => x.name === f.name && x.size === f.size)) {
+        valid.push(f);
+      }
+    }
+    if (valid.length) onAdd(valid);
   };
 
   return (
@@ -133,7 +131,6 @@ function FileDropZone({
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function CreateBusinessPage() {
   const router = useRouter();
-  const pathname = usePathname();
 
   // Sidebar / user state
   const [profile, setProfile] = useState<{ fullName: string; verificationStatus: string } | null>(null);
@@ -147,6 +144,8 @@ export default function CreateBusinessPage() {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error">("success");
   const [submitting, setSubmitting] = useState(false);
+  const [createdBusinessId, setCreatedBusinessId] = useState<number | null>(null);
+  const [uploadFailed, setUploadFailed] = useState(false);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [documentFiles, setDocumentFiles] = useState<File[]>([]);
   const [financialFiles, setFinancialFiles] = useState<File[]>([]);
@@ -185,10 +184,33 @@ export default function CreateBusinessPage() {
   const inputClass =
     "w-full bg-[#121c32] border border-white/10 text-[#c7d2e0] placeholder:text-[#4f6380] p-3 rounded-lg focus:outline-none focus:border-[#00cfa8]/50 transition-colors";
 
+  async function handleRetryUpload() {
+    if (!createdBusinessId) return;
+    setSubmitting(true);
+    setMessage("");
+    try {
+      const fileData = new FormData();
+      imageFiles.forEach((f) => fileData.append("images", f));
+      documentFiles.forEach((f) => fileData.append("documents", f));
+      financialFiles.forEach((f) => fileData.append("financialReports", f));
+      await apiUpload(`/businesses/${createdBusinessId}/files`, fileData);
+      router.push("/seller/businesses");
+    } catch (uploadErr: unknown) {
+      const errMsg = uploadErr instanceof Error ? uploadErr.message : "Upload error";
+      setUploadFailed(true);
+      setMessage(
+        `Uploading attachments to listing #${createdBusinessId} failed: ${errMsg}. Please check file limits and retry, or proceed to My Listings.`
+      );
+      setMessageType("error");
+      setSubmitting(false);
+    }
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
     setMessage("");
+    setUploadFailed(false);
 
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
@@ -210,31 +232,48 @@ export default function CreateBusinessPage() {
       reasonForSelling: String(form.get("reasonForSelling")),
     };
 
-    try {
-      const result = await apiRequest<{ message: string; data: { id: number } }>(
-        "/businesses",
-        { method: "POST", body: JSON.stringify(payload) }
-      );
+    let businessId = createdBusinessId;
+    if (!businessId) {
+      try {
+        const result = await apiRequest<{ message: string; data: { id: number } }>(
+          "/businesses",
+          { method: "POST", body: JSON.stringify(payload) }
+        );
+        businessId = result.data.id;
+        setCreatedBusinessId(businessId);
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : "Failed to create listing";
+        setMessage(errMsg);
+        setMessageType("error");
+        setSubmitting(false);
+        return;
+      }
+    }
 
-      const businessId = result.data.id;
-      const hasFiles =
-        imageFiles.length > 0 || documentFiles.length > 0 || financialFiles.length > 0;
+    const hasFiles =
+      imageFiles.length > 0 || documentFiles.length > 0 || financialFiles.length > 0;
 
-      if (hasFiles) {
+    if (hasFiles && businessId) {
+      try {
         const fileData = new FormData();
         imageFiles.forEach((f) => fileData.append("images", f));
         documentFiles.forEach((f) => fileData.append("documents", f));
         financialFiles.forEach((f) => fileData.append("financialReports", f));
         await apiUpload(`/businesses/${businessId}/files`, fileData);
+      } catch (uploadErr: unknown) {
+        const errMsg = uploadErr instanceof Error ? uploadErr.message : "Upload error";
+        setUploadFailed(true);
+        setMessage(
+          `Listing created successfully (ID: #${businessId}), but uploading attachments failed: ${errMsg}. You can retry uploading attachments below or manage your listing from My Listings.`
+        );
+        setMessageType("error");
+        setSubmitting(false);
+        return;
       }
-
-      router.push("/seller/businesses");
-    } catch (err: any) {
-      setMessage(err?.message || "Failed to create listing");
-      setMessageType("error");
-      setSubmitting(false);
     }
-  };
+
+    router.push("/seller/businesses");
+  }
 
   return (
     <div className="min-h-screen bg-[#080c15] text-[#c7d2e0] flex relative overflow-x-hidden">
@@ -481,8 +520,8 @@ export default function CreateBusinessPage() {
                 <FileDropZone
                   label="Business photos"
                   hint="Drop photos here or browse"
-                  sub="Multiple files allowed · max 20 MB each"
-                  accept="image/*"
+                  sub="Multiple photos allowed · max 20 MB each"
+                  accept="image/jpeg,image/png,image/webp"
                   iconClass="text-blue-400 bg-blue-500/20"
                   icon="📷"
                   badge="JPG · PNG · WEBP"
@@ -494,11 +533,11 @@ export default function CreateBusinessPage() {
                 <FileDropZone
                   label="Business documents"
                   hint="Drop documents here or browse"
-                  sub="Licences, registrations, ownership docs"
-                  accept=".pdf,.doc,.docx,application/pdf,application/msword"
+                  sub="Licences, registrations, ownership docs (PDF · max 20 MB each)"
+                  accept="application/pdf"
                   iconClass="text-[#00cfa8] bg-[#00cfa8]/20"
                   icon="📄"
-                  badge="PDF · DOCX"
+                  badge="PDF"
                   files={documentFiles}
                   onAdd={(f) => setDocumentFiles((p) => [...p, ...f])}
                   onRemove={(i) => setDocumentFiles((p) => p.filter((_, idx) => idx !== i))}
@@ -507,11 +546,11 @@ export default function CreateBusinessPage() {
                 <FileDropZone
                   label="Financial reports"
                   hint="Drop reports here or browse"
-                  sub="P&L statements, balance sheets, tax returns"
-                  accept=".pdf,.xlsx,.xls,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  sub="P&L statements, balance sheets, tax returns (PDF · max 20 MB each)"
+                  accept="application/pdf"
                   iconClass="text-[#f5a623] bg-[#f5a623]/20"
                   icon="📊"
-                  badge="PDF · XLSX"
+                  badge="PDF"
                   files={financialFiles}
                   onAdd={(f) => setFinancialFiles((p) => [...p, ...f])}
                   onRemove={(i) => setFinancialFiles((p) => p.filter((_, idx) => idx !== i))}
@@ -531,13 +570,33 @@ export default function CreateBusinessPage() {
                 </div>
               )}
 
-              {/* Submit */}
-              <button
-                disabled={submitting}
-                className="w-full bg-[#00cfa8] text-[#080c15] p-3 rounded-lg font-semibold hover:bg-[#00e6bc] disabled:opacity-50 transition-colors tracking-wide"
-              >
-                {submitting ? "Submitting..." : "SUBMIT FOR REVIEW"}
-              </button>
+              {/* Submit or Retry Actions */}
+              {createdBusinessId && uploadFailed ? (
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    type="button"
+                    onClick={handleRetryUpload}
+                    disabled={submitting}
+                    className="flex-1 bg-[#00cfa8] text-[#080c15] p-3 rounded-lg font-semibold hover:bg-[#00e6bc] disabled:opacity-50 transition-colors tracking-wide text-center"
+                  >
+                    {submitting ? "Retrying Upload..." : `RETRY UPLOADING ATTACHMENTS (ID: #${createdBusinessId})`}
+                  </button>
+                  <Link
+                    href="/seller/businesses"
+                    className="px-6 py-3 rounded-lg font-semibold bg-white/10 hover:bg-white/15 text-white transition-colors text-center flex items-center justify-center"
+                  >
+                    GO TO MY LISTINGS
+                  </Link>
+                </div>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full bg-[#00cfa8] text-[#080c15] p-3 rounded-lg font-semibold hover:bg-[#00e6bc] disabled:opacity-50 transition-colors tracking-wide"
+                >
+                  {submitting ? "Submitting..." : "SUBMIT FOR REVIEW"}
+                </button>
+              )}
             </form>
           </div>
         </main>

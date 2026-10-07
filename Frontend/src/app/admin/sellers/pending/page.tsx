@@ -26,21 +26,30 @@ export default function PendingSellersPage() {
   const [selectedSeller, setSelectedSeller] = useState<Seller | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
 
-  const fetchPending = async () => {
-    try {
-      setLoading(true);
-      const res = await apiRequest<any>("/admin/sellers/pending");
-      const list: Seller[] = Array.isArray(res) ? res : (res?.data || []);
-      setSellers(list);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load pending sellers");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchPending();
+    let ignore = false;
+    async function loadPending() {
+      try {
+        const res = await apiRequest<Seller[] | { data?: Seller[] }>("/admin/sellers/pending");
+        if (!ignore) {
+          const list: Seller[] = Array.isArray(res) ? res : (res?.data || []);
+          setSellers(list);
+        }
+      } catch (err) {
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : "Could not load pending sellers");
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadPending();
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const handleApprove = async (id: number) => {

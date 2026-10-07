@@ -27,8 +27,11 @@ public class VerificationController {
 
     @PostMapping("/submit/{businessId}")
     @PreAuthorize("hasRole('SELLER') or hasRole('ADMIN')")
-    public ApiResponse<VerificationRequestDto> submitForVerification(@PathVariable Long businessId) {
-        VerificationRequestDto request = verificationService.submitForVerification(businessId);
+    public ApiResponse<VerificationRequestDto> submitForVerification(
+            @PathVariable Long businessId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+        Long callerId = getCurrentUserId();
+        VerificationRequestDto request = verificationService.submitForVerification(businessId, callerId);
         return ApiResponse.success("Submitted for verification", request);
     }
 
@@ -105,16 +108,20 @@ public class VerificationController {
     }
 
     @GetMapping("/{businessId}/documents")
-    @PreAuthorize("hasRole('VERIFICATION_OFFICER') or hasRole('ADMIN')")
-    public ApiResponse<List<BusinessFileResponse>> getBusinessDocuments(@PathVariable Long businessId) {
-        List<BusinessFileResponse> documents = businessFileService.getFilesForBusiness(businessId);
+    public ApiResponse<List<BusinessFileResponse>> getBusinessDocuments(
+            @PathVariable Long businessId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+        String callerEmail = userDetails != null ? userDetails.getUsername() : null;
+        List<BusinessFileResponse> documents = businessFileService.getFilesForBusiness(businessId, callerEmail);
         return ApiResponse.success("Fetched business documents", documents);
     }
 
     @GetMapping("/files/{fileId}")
-    @PreAuthorize("hasRole('VERIFICATION_OFFICER') or hasRole('ADMIN')")
-    public ResponseEntity<byte[]> serveFile(@PathVariable Long fileId) {
-        return businessFileService.serveFile(fileId);
+    public ResponseEntity<byte[]> serveFile(
+            @PathVariable Long fileId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+        String callerEmail = userDetails != null ? userDetails.getUsername() : null;
+        return businessFileService.serveFile(fileId, callerEmail);
     }
 
     private Long getCurrentUserId() {

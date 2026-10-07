@@ -53,12 +53,15 @@ public class InquiryService {
             throw new DuplicateResourceException("You cannot send an inquiry on your own listing");
         }
 
-        inquiryRepository.findByBusinessIdAndBuyerId(business.getId(), buyer.getId())
-                .filter(existing -> ACTIVE_STATES.contains(existing.getStatus()))
-                .ifPresent(existing -> {
-                    throw new DuplicateResourceException(
-                            "You already have an open inquiry for this business");
-                });
+        // Require business to be publicly approved and verified before accepting inquiries
+        if (business.getStatus() != com.businessexchange.business.entity.BusinessStatus.APPROVED
+                || business.getVerificationStatus() != com.businessexchange.seller.entity.VerificationStatus.APPROVED) {
+            throw new ResourceNotFoundException("Business is not publicly available for inquiries");
+        }
+
+        if (inquiryRepository.existsByBusinessIdAndBuyerIdAndStatusIn(business.getId(), buyer.getId(), ACTIVE_STATES)) {
+            throw new DuplicateResourceException("You already have an open inquiry for this business");
+        }
 
         Inquiry inquiry = Inquiry.builder()
                 .business(business)

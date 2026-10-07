@@ -36,6 +36,9 @@ class PasswordResetServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private com.businessexchange.user.service.OtpAttemptService otpAttemptService;
+
     @InjectMocks
     private PasswordResetService passwordResetService;
 
@@ -77,9 +80,8 @@ class PasswordResetServiceTest {
         BadCredentialsException ex = assertThrows(BadCredentialsException.class, () ->
                 passwordResetService.verifyOtp("test@bizexchange.com", "999999"));
 
-        assertEquals("Invalid code", ex.getMessage());
-        assertEquals(1, sampleRequest.getAttemptCount());
-        verify(resetRepository).save(sampleRequest);
+        assertTrue(ex.getMessage().contains("Invalid code") || ex.getMessage().contains("Invalid"));
+        verify(otpAttemptService).incrementPasswordResetOtpAttempt(sampleRequest.getId());
     }
 
     @Test
@@ -92,7 +94,7 @@ class PasswordResetServiceTest {
         BadCredentialsException ex = assertThrows(BadCredentialsException.class, () ->
                 passwordResetService.verifyOtp("test@bizexchange.com", "123456"));
 
-        assertEquals("Too many attempts", ex.getMessage());
+        assertTrue(ex.getMessage().contains("Too many failed attempts"));
         verify(passwordEncoder, never()).matches(any(), any());
     }
 

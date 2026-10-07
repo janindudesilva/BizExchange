@@ -94,7 +94,7 @@ export default function SellerDashboardPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
-  const [loaded, setLoaded] = useState(false);
+  const [loaded, setLoaded] = useState(() => typeof window !== "undefined" && !localStorage.getItem("userId"));
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -126,10 +126,10 @@ export default function SellerDashboardPage() {
   useEffect(() => {
     const userId = localStorage.getItem("userId");
     if (!userId) {
-      setLoaded(true);
       return;
     }
 
+    let ignore = false;
     Promise.allSettled([
       apiRequest<SellerProfile>(`/seller/profile/${userId}`),
       apiRequest<{ data: Business[] }>(`/businesses/seller/${userId}`),
@@ -138,6 +138,7 @@ export default function SellerDashboardPage() {
       apiRequest<{ data: number }>("/notifications/unread/count"),
       apiRequest<{ data: Notification[] }>("/notifications"),
     ]).then(([profileRes, businessRes, inqRes, ticketsRes, unreadRes, notifRes]) => {
+      if (ignore) return;
       if (profileRes.status === "fulfilled") {
         setProfile(profileRes.value);
       }
@@ -158,6 +159,10 @@ export default function SellerDashboardPage() {
       }
       setLoaded(true);
     });
+
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const markNotificationAsRead = async (id: number) => {
@@ -339,6 +344,9 @@ export default function SellerDashboardPage() {
                 <span className="text-sm text-[#d8e4f0] hidden sm:inline">
                   {profile?.fullName ?? "Seller"}
                 </span>
+                <span className="text-[10px] text-[#00cfa8] bg-[#00cfa8]/10 px-2 py-0.5 rounded-full hidden md:inline">
+                  {verificationLabel(verificationStatus)}
+                </span>
               </button>
 
               {menuOpen && (
@@ -438,11 +446,11 @@ export default function SellerDashboardPage() {
               </div>
             </div>
 
-            {/* Card 3: Pending Offer */}
+            {/* Card 3: Pending Inquiries */}
             <div className="glass-panel stat-card-accent-amber rounded-2xl p-5 flex flex-col justify-between">
               <div>
                 <div className="text-[11px] tracking-[0.1em] text-[#4f6380] font-semibold uppercase">
-                  PENDING OFFER
+                  PENDING INQUIRIES
                 </div>
                 <div className="text-2xl sm:text-3xl font-bold text-[#f59e0b] mt-3 tabular-nums">
                   {pendingOffers}
@@ -455,11 +463,11 @@ export default function SellerDashboardPage() {
               </div>
             </div>
 
-            {/* Card 4: Active Deal */}
+            {/* Card 4: Active Conversations */}
             <div className="glass-panel stat-card-accent-teal rounded-2xl p-5 flex flex-col justify-between">
               <div>
                 <div className="text-[11px] tracking-[0.1em] text-[#4f6380] font-semibold uppercase">
-                  ACTIVE DEAL
+                  ACTIVE CONVERSATIONS
                 </div>
                 <div className="text-2xl sm:text-3xl font-bold text-[#00cfa8] mt-3 tabular-nums">
                   {activeDeals}
@@ -467,8 +475,8 @@ export default function SellerDashboardPage() {
               </div>
               <div className="text-xs text-[#8493a8] mt-3">
                 {activeDeals > 0
-                  ? `${activeDeals} active negotiations`
-                  : "No active deals in progress"}
+                  ? `${activeDeals} active inquiry threads`
+                  : "No active conversations in progress"}
               </div>
             </div>
           </div>
@@ -571,7 +579,7 @@ export default function SellerDashboardPage() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#8092ab]">Offers Received</span>
+                    <span className="text-[#8092ab]">Inquiries Received</span>
                     <span className="text-[#d8e4f0] font-semibold tabular-nums">
                       {pendingOffers + activeDeals}
                     </span>

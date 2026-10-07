@@ -30,19 +30,28 @@ export default function VerificationOfficerDashboardPage() {
       router.push("/login");
       return;
     }
-    fetchPendingRequests();
-  }, []);
 
-  const fetchPendingRequests = async () => {
-    try {
-      const response = await apiRequest<{ data: VerificationRequest[] }>("/verification/pending");
-      setRequests(response.data || []);
-    } catch (err) {
-      console.error("Failed to fetch pending requests", err);
-    } finally {
-      setLoading(false);
+    let ignore = false;
+    async function loadRequests() {
+      try {
+        const response = await apiRequest<{ data: VerificationRequest[] }>("/verification/pending");
+        if (!ignore) {
+          setRequests(response.data || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch pending requests", err);
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
     }
-  };
+
+    loadRequests();
+    return () => {
+      ignore = true;
+    };
+  }, [router]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

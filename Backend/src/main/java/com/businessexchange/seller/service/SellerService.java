@@ -27,6 +27,7 @@ public class SellerService {
     private final UserRepository userRepository;
     private final ReviewService reviewService;
     private final NotificationService notificationService;
+    private final com.businessexchange.common.audit.service.AuditService auditService;
 
     public List<SellerProfileResponseDto> getAllSellers() {
         return sellerProfileRepository.findAll()
@@ -71,6 +72,7 @@ public class SellerService {
 
         sellerProfile.setVerificationStatus(VerificationStatus.APPROVED);
         SellerProfile saved = sellerProfileRepository.save(sellerProfile);
+        auditService.record(sellerProfile.getUser(), "SELLER_VERIFIED", "SELLER_PROFILE", sellerId, "Seller profile verified");
 
         return sellerMapper.toDto(saved);
     }
@@ -83,6 +85,7 @@ public class SellerService {
         sellerProfile.setVerificationStatus(VerificationStatus.REJECTED);
         sellerProfile.setRejectionReason(reason);
         SellerProfile saved = sellerProfileRepository.save(sellerProfile);
+        auditService.record(sellerProfile.getUser(), "SELLER_REJECTED", "SELLER_PROFILE", sellerId, "Seller profile rejected: " + reason);
 
         return sellerMapper.toDto(saved);
     }
@@ -105,15 +108,16 @@ public class SellerService {
 
         sellerProfile.setFlaggedSuspicious(true);
         sellerProfileRepository.save(sellerProfile);
+        auditService.record(sellerProfile.getUser(), "SELLER_SUSPICIOUS_FLAGGED", "SELLER_PROFILE", sellerId, "Seller flagged as suspicious: " + reason);
 
-        // Notify all admins
+        // Notify all admins using valid route /admin/sellers
         List<User> admins = userRepository.findByRole(UserRole.ADMIN);
         for (User admin : admins) {
             notificationService.notify(
                     admin,
                     "SUSPICIOUS_SELLER",
                     "Seller flagged as suspicious: " + sellerProfile.getUser().getFullName(),
-                    "/admin/sellers/" + sellerId);
+                    "/admin/sellers");
         }
     }
 

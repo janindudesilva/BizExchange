@@ -46,13 +46,13 @@ function BusinessesContent() {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   // Sync categoryId if URL param changes
-  useEffect(() => {
-    const urlCat = searchParams.get("categoryId");
-    if (urlCat) {
-      setCategoryId(urlCat);
-      setPage(0);
-    }
-  }, [searchParams]);
+  const [prevUrlCat, setPrevUrlCat] = useState(initialCategory);
+  const currentUrlCat = searchParams.get("categoryId") || "";
+  if (prevUrlCat !== currentUrlCat) {
+    setPrevUrlCat(currentUrlCat);
+    setCategoryId(currentUrlCat);
+    setPage(0);
+  }
 
   // Debounce search keyword
   useEffect(() => {
@@ -78,34 +78,44 @@ function BusinessesContent() {
 
   // Fetch businesses when filters change
   useEffect(() => {
-    fetchFilteredBusinesses();
+    let ignore = false;
+    const fetchFiltered = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const params = new URLSearchParams();
+        if (debouncedKeyword) params.append("keyword", debouncedKeyword);
+        if (categoryId) params.append("categoryId", categoryId);
+        if (minPrice) params.append("minPrice", minPrice);
+        if (maxPrice) params.append("maxPrice", maxPrice);
+        if (location) params.append("location", location);
+        params.append("page", String(page));
+        params.append("size", String(size));
+
+        const response = await apiRequest<{ data: PaginatedData<Business> }>(
+          `/businesses?${params.toString()}`
+        );
+        if (!ignore) {
+          setBusinesses(response.data.content || []);
+          setTotalPages(response.data.totalPages || 0);
+          setTotalElements(response.data.totalElements || 0);
+        }
+      } catch (err) {
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : "Failed to load listings");
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchFiltered();
+    return () => {
+      ignore = true;
+    };
   }, [debouncedKeyword, categoryId, minPrice, maxPrice, location, page]);
-
-  const fetchFilteredBusinesses = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const params = new URLSearchParams();
-      if (debouncedKeyword) params.append("keyword", debouncedKeyword);
-      if (categoryId) params.append("categoryId", categoryId);
-      if (minPrice) params.append("minPrice", minPrice);
-      if (maxPrice) params.append("maxPrice", maxPrice);
-      if (location) params.append("location", location);
-      params.append("page", String(page));
-      params.append("size", String(size));
-
-      const response = await apiRequest<{ data: PaginatedData<Business> }>(
-        `/businesses?${params.toString()}`
-      );
-      setBusinesses(response.data.content || []);
-      setTotalPages(response.data.totalPages || 0);
-      setTotalElements(response.data.totalElements || 0);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load listings");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleResetFilters = () => {
     setKeyword("");

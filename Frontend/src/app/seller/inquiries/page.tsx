@@ -13,18 +13,7 @@ interface SellerProfile {
     verificationStatus: VerificationStatus;
 }
 
-const NAV_ITEMS: {
-    label: string;
-    href?: string;
-    badge?: number;
-}[] = [
-    { label: "Overview", href: "/seller/dashboard" },
-    { label: "My Listing", href: "/seller/businesses" },
-    { label: "Inquiries", href: "/seller/inquiries" },
-    { label: "Offers", href: "/seller/inquiries" },
-    { label: "Active Deals", href: "/seller/inquiries" },
-    { label: "Support", href: "/support/my-tickets" },
-];
+
 
 function initials(name: string | undefined): string {
     if (!name) return "?";
@@ -35,17 +24,10 @@ function initials(name: string | undefined): string {
         .join("");
 }
 
-function verificationLabel(status: VerificationStatus | null): string {
-    if (status === "APPROVED") return "Verified Seller";
-    if (status === "PENDING") return "Verification Pending";
-    if (status === "REJECTED") return "Verification Rejected";
-    return "Seller";
-}
-
 export default function SellerInquiriesPage() {
     const [profile, setProfile] = useState<SellerProfile | null>(null);
     const [inquiries, setInquiries] = useState<Inquiry[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(() => typeof window !== "undefined" && !localStorage.getItem("userId") ? false : true);
     const [error, setError] = useState("");
     const [actingId, setActingId] = useState<number | null>(null);
     const [menuOpen, setMenuOpen] = useState(false);
@@ -72,14 +54,15 @@ export default function SellerInquiriesPage() {
     useEffect(() => {
         const userId = localStorage.getItem("userId");
         if (!userId) {
-            setLoading(false);
             return;
         }
 
+        let ignore = false;
         Promise.allSettled([
             apiRequest<SellerProfile>(`/seller/profile/${userId}`),
             apiRequest<InquiryApiResponse>("/inquiries/received"),
         ]).then(([profileResult, inquiriesResult]) => {
+            if (ignore) return;
             if (profileResult.status === "fulfilled") {
                 setProfile(profileResult.value);
             }
@@ -90,6 +73,10 @@ export default function SellerInquiriesPage() {
             }
             setLoading(false);
         });
+
+        return () => {
+            ignore = true;
+        };
     }, []);
 
     const respond = async (id: number, action: "approve" | "reject") => {

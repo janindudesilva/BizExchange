@@ -24,9 +24,10 @@ export default function ResendVerificationPage() {
       });
       setStatus("success");
       setMessage("Verification email sent successfully! Please check your inbox.");
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "Failed to send verification email. Please try again.";
       setStatus("error");
-      setMessage(err.message || "Failed to send verification email. Please try again.");
+      setMessage(errMsg);
     } finally {
       setLoading(false);
     }

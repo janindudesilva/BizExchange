@@ -16,15 +16,13 @@ export default function SendInquiryButton({ businessId }: SendInquiryButtonProps
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [role, setRole] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [role] = useState<string | null>(() => typeof window !== "undefined" ? localStorage.getItem("role") : null);
+  const [token] = useState<string | null>(() => typeof window !== "undefined" ? localStorage.getItem("token") : null);
   const [existingInquiryId, setExistingInquiryId] = useState<number | null>(null);
 
   useEffect(() => {
-    const storedRole = localStorage.getItem("role");
-    setRole(storedRole);
     const storedToken = localStorage.getItem("token");
-    setToken(storedToken);
+    const storedRole = localStorage.getItem("role");
 
     if (storedToken && storedRole === "BUYER") {
       apiRequest<InquiryApiResponse>("/inquiries/sent")

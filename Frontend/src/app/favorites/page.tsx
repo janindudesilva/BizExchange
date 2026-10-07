@@ -22,27 +22,34 @@ export default function FavoritesPage() {
       return;
     }
 
-    fetchFavorites();
-  }, [router]);
-
-  const fetchFavorites = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const response = await apiRequest<{ data: any[] }>("/favorites");
-      const mapped: Business[] = (response.data || []).map((item: any) => ({
-        ...item,
-        // Ensure businessId is used for correct routing to /businesses/[id]
-        id: item.businessId ?? item.id,
-        isFavorited: true,
-      }));
-      setBusinesses(mapped);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load saved businesses");
-    } finally {
-      setLoading(false);
+    let ignore = false;
+    async function loadFavorites() {
+      try {
+        const response = await apiRequest<{ data: (Business & { businessId?: number })[] }>("/favorites");
+        if (!ignore) {
+          const mapped: Business[] = (response.data || []).map((item) => ({
+            ...item,
+            id: item.businessId ?? item.id,
+            isFavorited: true,
+          }));
+          setBusinesses(mapped);
+        }
+      } catch (err) {
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : "Failed to load saved businesses");
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
     }
-  };
+
+    loadFavorites();
+    return () => {
+      ignore = true;
+    };
+  }, [router]);
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">

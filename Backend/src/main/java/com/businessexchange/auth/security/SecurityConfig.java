@@ -58,6 +58,8 @@ public class SecurityConfig {
                         "/api/businesses/{id:[0-9]+}",
                         "/api/businesses/{id:[0-9]+}/files",
                         "/api/businesses/files/{fileId:[0-9]+}",
+                        "/api/verification/{businessId:[0-9]+}/documents",
+                        "/api/verification/files/{fileId:[0-9]+}",
                         "/api/categories").permitAll()
                .anyRequest().authenticated()
             );

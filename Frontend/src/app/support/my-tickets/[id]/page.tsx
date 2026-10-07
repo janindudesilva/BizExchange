@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api";
 
@@ -37,31 +37,40 @@ export default function MyTicketDetailPage() {
   const [replyText, setReplyText] = useState("");
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    fetchTicketDetails();
-    fetchMessages();
-  }, [ticketId]);
-
-  const fetchTicketDetails = async () => {
-    try {
-      const response = await apiRequest<{ data: Ticket }>(`/tickets/${ticketId}`);
-      setTicket(response.data);
-    } catch (err) {
-      console.error("Failed to fetch ticket", err);
-      setMessage("Failed to load ticket details");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     try {
       const response = await apiRequest<{ data: TicketMessage[] }>(`/tickets/${ticketId}/messages`);
       setMessages(response.data || []);
     } catch (err) {
       console.error("Failed to fetch messages", err);
     }
-  };
+  }, [ticketId]);
+
+  useEffect(() => {
+    let ignore = false;
+    async function loadData() {
+      try {
+        const [ticketRes, messagesRes] = await Promise.all([
+          apiRequest<{ data: Ticket }>(`/tickets/${ticketId}`),
+          apiRequest<{ data: TicketMessage[] }>(`/tickets/${ticketId}/messages`),
+        ]);
+        if (!ignore) {
+          setTicket(ticketRes.data);
+          setMessages(messagesRes.data || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch ticket data", err);
+        if (!ignore) setMessage("Failed to load ticket details");
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+
+    loadData();
+    return () => {
+      ignore = true;
+    };
+  }, [ticketId]);
 
   const handleReply = async () => {
     if (!replyText.trim()) return;

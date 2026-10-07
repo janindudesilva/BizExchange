@@ -139,7 +139,7 @@ export default function HomePage() {
             {/* Eyebrow — one per page, here only */}
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass-panel text-[11px] font-semibold text-[#00cfa8] mb-5 border border-[#00cfa8]/20 shadow-[0_0_10px_rgba(0,207,168,0.1)]">
               <span className="w-1.5 h-1.5 rounded-full bg-[#00cfa8] animate-pulse flex-shrink-0" />
-              <span>Sri Lanka's Premier Business Marketplace</span>
+              <span>Sri Lanka&apos;s Premier Business Marketplace</span>
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.1] mb-5">

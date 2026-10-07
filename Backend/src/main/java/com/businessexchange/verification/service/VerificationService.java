@@ -25,19 +25,42 @@ public class VerificationService {
     private final BusinessRepository businessRepository;
     private final NotificationService notificationService;
     private final com.businessexchange.user.repository.UserRepository userRepository;
+    private final com.businessexchange.common.audit.service.AuditService auditService;
 
     @Transactional
     public VerificationRequestDto submitForVerification(Long businessId) {
+        throw new org.springframework.security.access.AccessDeniedException("Authentication required to submit for verification");
+    }
+
+    @Transactional
+    public VerificationRequestDto submitForVerification(Long businessId, Long callerUserId) {
+        if (callerUserId == null) {
+            throw new org.springframework.security.access.AccessDeniedException("Authentication required to submit for verification");
+        }
+
         Business business = businessRepository.findById(businessId)
                 .orElseThrow(() -> new ResourceNotFoundException("Business not found"));
 
-        // If verification request already exists, return it or re-activate if needed
+        User caller = userRepository.findById(callerUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        boolean isAdmin = caller.getRole() == com.businessexchange.user.entity.UserRole.ADMIN;
+        boolean isOwner = business.getSeller() != null && business.getSeller().getId().equals(callerUserId);
+        if (!isAdmin && !isOwner) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "You do not have permission to submit this business for verification");
+        }
+
+        // If verification request already exists, re-activate it and reset obsolete decision metadata
         var existing = verificationRequestRepository.findByBusinessId(businessId);
         if (existing.isPresent()) {
             VerificationRequest request = existing.get();
             request.setStatus(VerificationStatus.PENDING);
+            request.setRemarks(null);
+            request.setVerifiedAt(null);
+            request.setOfficer(null);
             business.setVerificationStatus(VerificationStatus.PENDING);
             businessRepository.save(business);
+            auditService.record(caller, "VERIFICATION_SUBMITTED", "BUSINESS", businessId, "Resubmitted listing for verification");
             return mapToDto(verificationRequestRepository.save(request));
         }
 
@@ -51,6 +74,7 @@ public class VerificationService {
 
         VerificationRequest saved = verificationRequestRepository.save(request);
         businessRepository.save(business);
+        auditService.record(caller, "VERIFICATION_SUBMITTED", "BUSINESS", businessId, "Submitted listing for verification");
 
         return mapToDto(saved);
     }
@@ -121,27 +145,27 @@ public class VerificationService {
         return officer;
     }
 
-    private VerificationRequest findRequestByIdOrBusinessId(Long id) {
-        return verificationRequestRepository.findById(id)
-                .or(() -> verificationRequestRepository.findByBusinessId(id))
-                .orElseThrow(() -> new ResourceNotFoundException("Verification request not found for id: " + id));
+    private VerificationRequest getRequestById(Long requestId) {
+        return verificationRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Verification request not found for id: " + requestId));
     }
 
     @Transactional
     public VerificationRequestDto assignToOfficer(Long requestId, Long officerId) {
-        VerificationRequest request = findRequestByIdOrBusinessId(requestId);
+        VerificationRequest request = getRequestById(requestId);
 
         User officer = getValidOfficer(officerId);
 
         request.setOfficer(officer);
         VerificationRequest saved = verificationRequestRepository.save(request);
+        auditService.record(officer, "VERIFICATION_ASSIGNED", "VERIFICATION_REQUEST", requestId, "Assigned to officer: " + officer.getFullName());
 
         return mapToDto(saved);
     }
 
     @Transactional
     public VerificationRequestDto approve(Long requestId, Long officerId) {
-        VerificationRequest request = findRequestByIdOrBusinessId(requestId);
+        VerificationRequest request = getRequestById(requestId);
 
         User officer = getValidOfficer(officerId);
 
@@ -154,13 +178,14 @@ public class VerificationService {
 
         VerificationRequest saved = verificationRequestRepository.save(request);
         businessRepository.save(business);
+        auditService.record(officer, "VERIFICATION_APPROVED", "VERIFICATION_REQUEST", requestId, "Officer verified business: " + business.getTitle());
 
-        // Notify seller
+        // Notify seller that verification passed and admin approval is now pending
         notificationService.notify(
                 business.getSeller(),
                 "BUSINESS_VERIFIED",
-                "Your business listing '" + business.getTitle() + "' has been verified and is now live.",
-                "/seller/my-businesses"
+                "Your business listing '" + business.getTitle() + "' has been verified by our verification officer and is now pending administrator publication review.",
+                "/seller/businesses"
         );
 
         return mapToDto(saved);
@@ -168,7 +193,7 @@ public class VerificationService {
 
     @Transactional
     public VerificationRequestDto reject(Long requestId, Long officerId, String remarks) {
-        VerificationRequest request = findRequestByIdOrBusinessId(requestId);
+        VerificationRequest request = getRequestById(requestId);
 
         User officer = getValidOfficer(officerId);
 
@@ -182,13 +207,14 @@ public class VerificationService {
 
         VerificationRequest saved = verificationRequestRepository.save(request);
         businessRepository.save(business);
+        auditService.record(officer, "VERIFICATION_REJECTED", "VERIFICATION_REQUEST", requestId, "Officer rejected business: " + business.getTitle() + ". Reason: " + remarks);
 
         // Notify seller
         notificationService.notify(
                 business.getSeller(),
                 "BUSINESS_REJECTED",
                 "Your business listing '" + business.getTitle() + "' was rejected. Reason: " + remarks,
-                "/seller/my-businesses"
+                "/seller/businesses"
         );
 
         return mapToDto(saved);
@@ -196,7 +222,7 @@ public class VerificationService {
 
     @Transactional
     public VerificationRequestDto requestMoreInfo(Long requestId, Long officerId, String remarks) {
-        VerificationRequest request = findRequestByIdOrBusinessId(requestId);
+        VerificationRequest request = getRequestById(requestId);
 
         User officer = getValidOfficer(officerId);
 
@@ -209,13 +235,14 @@ public class VerificationService {
 
         VerificationRequest saved = verificationRequestRepository.save(request);
         businessRepository.save(business);
+        auditService.record(officer, "VERIFICATION_INFO_REQUESTED", "VERIFICATION_REQUEST", requestId, "More information requested for business: " + business.getTitle() + ". Remarks: " + remarks);
 
         // Notify seller
         notificationService.notify(
                 business.getSeller(),
                 "BUSINESS_NEEDS_INFO",
                 "Your business listing '" + business.getTitle() + "' needs more information. " + remarks,
-                "/seller/my-businesses"
+                "/seller/businesses"
         );
 
         return mapToDto(saved);

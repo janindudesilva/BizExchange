@@ -26,6 +26,7 @@ public class TicketService {
     private final TicketMessageRepository messageRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final com.businessexchange.common.audit.service.AuditService auditService;
 
     @Transactional
     public TicketResponse create(TicketCreateRequest request, Long createdById) {
@@ -105,11 +106,14 @@ public class TicketService {
                 : ticket.getCreatedBy();
         
         if (recipient != null) {
+            String ticketLink = (recipient.getRole() == UserRole.SUPPORT_AGENT || recipient.getRole() == UserRole.ADMIN)
+                    ? "/agent/tickets/" + ticketId
+                    : "/support/my-tickets/" + ticketId;
             notificationService.notify(
                     recipient,
                     "TICKET_REPLY",
                     "New reply on ticket: " + ticket.getSubject(),
-                    "/support/my-tickets/" + ticketId
+                    ticketLink
             );
         }
 
@@ -148,14 +152,16 @@ public class TicketService {
         SupportTicket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found"));
 
+        User agent = null;
         if (agentId != null) {
-            User agent = userRepository.findById(agentId)
+            agent = userRepository.findById(agentId)
                     .orElseThrow(() -> new ResourceNotFoundException("Agent not found"));
             checkTicketAccess(ticket, agent);
         }
 
         ticket.setStatus(TicketStatus.ESCALATED);
         ticketRepository.save(ticket);
+        auditService.record(agent, "TICKET_ESCALATED", "SUPPORT_TICKET", ticketId, "Ticket escalated: " + ticket.getSubject() + " - Reason: " + reason);
 
         // Notify all admins
         List<User> admins = userRepository.findByRole(UserRole.ADMIN);
@@ -164,7 +170,7 @@ public class TicketService {
                     admin,
                     "TICKET_ESCALATED",
                     "Ticket escalated: " + ticket.getSubject() + " - Reason: " + reason,
-                    "/admin/tickets/" + ticketId
+                    "/admin/tickets"
             );
         }
     }
@@ -184,6 +190,7 @@ public class TicketService {
         ticket.setAssignedTo(agent);
         ticket.setStatus(TicketStatus.IN_PROGRESS);
         ticketRepository.save(ticket);
+        auditService.record(agent, "TICKET_ASSIGNED", "SUPPORT_TICKET", ticketId, "Assigned to: " + agent.getFullName());
 
         // Notify the agent
         notificationService.notify(

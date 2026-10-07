@@ -101,7 +101,7 @@ public class BusinessService {
 
         // Automatically create a pending verification request for verification officers
         try {
-            verificationService.submitForVerification(saved.getId());
+            verificationService.submitForVerification(saved.getId(), saved.getSeller().getId());
         } catch (Exception e) {
             log.warn("Automatic verification submission note for business {}: {}", saved.getId(), e.getMessage());
         }
@@ -199,6 +199,9 @@ public class BusinessService {
         return mapToResponse(business, callerEmail);
     }
 
+    private final com.businessexchange.verification.repository.VerificationRequestRepository verificationRequestRepository;
+    private final com.businessexchange.common.audit.service.AuditService auditService;
+
     @Transactional
     public BusinessResponse updateBusiness(Long id, BusinessUpdateRequest request) {
         return updateBusiness(id, request, null);
@@ -209,8 +212,9 @@ public class BusinessService {
         Business business = businessRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Business not found"));
 
+        User caller = null;
         if (callerEmail != null) {
-            User caller = userRepository.findByEmail(callerEmail)
+            caller = userRepository.findByEmail(callerEmail)
                     .orElseThrow(() -> new ResourceNotFoundException("Caller user not found"));
             boolean isAdmin = caller.getRole() == UserRole.ADMIN;
             boolean isOwner = business.getSeller().getEmail().equals(callerEmail);
@@ -219,16 +223,62 @@ public class BusinessService {
             }
         }
 
-        business.setTitle(request.getTitle());
-        business.setDescription(request.getDescription());
-        business.setLocation(request.getLocation());
-        business.setAddress(request.getAddress());
-        business.setAskingPrice(request.getAskingPrice());
-        business.setBusinessAgeYears(request.getBusinessAgeYears());
-        business.setNumberOfEmployees(request.getNumberOfEmployees());
-        business.setReasonForSelling(request.getReasonForSelling());
+        // Required/Core fields: update when provided and non-blank/positive
+        if (request.getTitle() != null && !request.getTitle().isBlank()) {
+            business.setTitle(request.getTitle().trim());
+        }
+        if (request.getDescription() != null && !request.getDescription().isBlank()) {
+            business.setDescription(request.getDescription().trim());
+        }
+        if (request.getLocation() != null && !request.getLocation().isBlank()) {
+            business.setLocation(request.getLocation().trim());
+        }
+        if (request.getAskingPrice() != null) {
+            business.setAskingPrice(request.getAskingPrice());
+        }
 
-        if (request.getCategory() != null) {
+        // Optional fields: distinguish omitted fields (preserved) from intentional clearing
+        // 1. address
+        if (Boolean.TRUE.equals(request.getClearAddress()) || 
+            (request.isFieldPresent("address") && (request.getAddress() == null || request.getAddress().isBlank()))) {
+            business.setAddress(null);
+        } else if (request.getAddress() != null) {
+            if (request.getAddress().isBlank()) {
+                business.setAddress(null);
+            } else {
+                business.setAddress(request.getAddress().trim());
+            }
+        }
+
+        // 2. businessAgeYears
+        if (Boolean.TRUE.equals(request.getClearBusinessAgeYears()) || 
+            (request.isFieldPresent("businessAgeYears") && request.getBusinessAgeYears() == null)) {
+            business.setBusinessAgeYears(null);
+        } else if (request.getBusinessAgeYears() != null) {
+            business.setBusinessAgeYears(request.getBusinessAgeYears());
+        }
+
+        // 3. numberOfEmployees
+        if (Boolean.TRUE.equals(request.getClearNumberOfEmployees()) || 
+            (request.isFieldPresent("numberOfEmployees") && request.getNumberOfEmployees() == null)) {
+            business.setNumberOfEmployees(null);
+        } else if (request.getNumberOfEmployees() != null) {
+            business.setNumberOfEmployees(request.getNumberOfEmployees());
+        }
+
+        // 4. reasonForSelling
+        if (Boolean.TRUE.equals(request.getClearReasonForSelling()) || 
+            (request.isFieldPresent("reasonForSelling") && (request.getReasonForSelling() == null || request.getReasonForSelling().isBlank()))) {
+            business.setReasonForSelling(null);
+        } else if (request.getReasonForSelling() != null) {
+            if (request.getReasonForSelling().isBlank()) {
+                business.setReasonForSelling(null);
+            } else {
+                business.setReasonForSelling(request.getReasonForSelling().trim());
+            }
+        }
+
+        if (request.getCategory() != null && !request.getCategory().isBlank()) {
             BusinessCategory category = categoryRepository.findByName(request.getCategory())
                     .orElseGet(() -> categoryRepository.save(
                             BusinessCategory.builder().name(request.getCategory()).build()
@@ -236,10 +286,25 @@ public class BusinessService {
             business.setCategory(category);
         }
 
-        // Reset to PENDING_REVIEW so admin re-approves after edits
+        // Edits trigger required re-review and reset obsolete decision metadata
         business.setStatus(BusinessStatus.PENDING_REVIEW);
+        business.setVerificationStatus(VerificationStatus.PENDING);
+        business.setApprovedBy(null);
+        business.setApprovedAt(null);
+        business.setRejectionReason(null);
 
-        return mapToResponse(businessRepository.save(business));
+        verificationRequestRepository.findByBusinessId(id).ifPresent(vr -> {
+            vr.setStatus(VerificationStatus.PENDING);
+            vr.setOfficer(null);
+            vr.setRemarks(null);
+            vr.setVerifiedAt(null);
+            verificationRequestRepository.save(vr);
+        });
+
+        Business saved = businessRepository.save(business);
+        auditService.record(caller, "BUSINESS_UPDATED", "BUSINESS", id, "Business listing updated: " + business.getTitle());
+
+        return mapToResponse(saved, callerEmail);
     }
 
     @Transactional
@@ -252,8 +317,9 @@ public class BusinessService {
         Business business = businessRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Business not found"));
 
+        User caller = null;
         if (callerEmail != null) {
-            User caller = userRepository.findByEmail(callerEmail)
+            caller = userRepository.findByEmail(callerEmail)
                     .orElseThrow(() -> new ResourceNotFoundException("Caller user not found"));
             boolean isAdmin = caller.getRole() == UserRole.ADMIN;
             boolean isOwner = business.getSeller().getEmail().equals(callerEmail);
@@ -263,6 +329,7 @@ public class BusinessService {
         }
 
         businessRepository.delete(business);
+        auditService.record(caller, "BUSINESS_DELETED", "BUSINESS", id, "Business listing deleted: " + business.getTitle());
     }
 
     public BusinessResponse mapToResponse(Business business) {
@@ -287,12 +354,21 @@ public class BusinessService {
             Long reviewCount
     ) {
         Boolean isFavorited = null;
+        boolean canSeePrivateAddress = false;
+
         if (buyerEmail != null) {
             try {
                 isFavorited = savedBusinessService.isBusinessSaved(buyerEmail, business.getId());
             } catch (Exception e) {
                 log.debug("Failed to check saved status for buyer {}: {}", buyerEmail, e.getMessage());
                 isFavorited = false;
+            }
+
+            User caller = userRepository.findByEmail(buyerEmail).orElse(null);
+            if (caller != null) {
+                canSeePrivateAddress = caller.getRole() == UserRole.ADMIN
+                        || caller.getRole() == UserRole.VERIFICATION_OFFICER
+                        || (business.getSeller() != null && business.getSeller().getId().equals(caller.getId()));
             }
         }
 
@@ -305,7 +381,11 @@ public class BusinessService {
                 .sellerName(business.getSeller().getFullName())
                 .description(business.getDescription())
                 .location(business.getLocation())
+                .address(canSeePrivateAddress ? business.getAddress() : null)
                 .askingPrice(business.getAskingPrice())
+                .businessAgeYears(business.getBusinessAgeYears())
+                .numberOfEmployees(business.getNumberOfEmployees())
+                .reasonForSelling(business.getReasonForSelling())
                 .status(business.getStatus().name())
                 .verificationStatus(business.getVerificationStatus().name())
                 .rejectionReason(business.getRejectionReason())

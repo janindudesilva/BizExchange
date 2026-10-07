@@ -1,19 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { apiRequest, apiUpload } from "@/lib/api";
+import { apiRequest, apiUpload, openAuthenticatedFile } from "@/lib/api";
 import SellerSidebar from "@/components/SellerSidebar";
-
-const NAV_ITEMS: { label: string; href?: string }[] = [
-    { label: "Overview", href: "/seller/dashboard" },
-    { label: "My Listing", href: "/seller/businesses" },
-    { label: "Inquiries", href: "/seller/inquiries" },
-    { label: "Offers", href: "/seller/inquiries" },
-    { label: "Active Deals", href: "/seller/inquiries" },
-    { label: "Support", href: "/support/my-tickets" },
-];
 
 function initials(name: string | undefined): string {
     if (!name) return "?";
@@ -27,7 +17,11 @@ interface Business {
     sellerName: string;
     description: string;
     location: string;
+    address?: string;
     askingPrice: number;
+    businessAgeYears?: number;
+    numberOfEmployees?: number;
+    reasonForSelling?: string;
     status: string;
     verificationStatus?: string;
     rejectionReason?: string;
@@ -37,8 +31,12 @@ interface EditForm {
     title: string;
     description: string;
     location: string;
+    address: string;
     askingPrice: string;
     category: string;
+    businessAgeYears: string;
+    numberOfEmployees: string;
+    reasonForSelling: string;
 }
 
 interface BusinessFile {
@@ -48,8 +46,6 @@ interface BusinessFile {
     url: string;
     uploadedAt: string;
 }
-
-const API = "http://localhost:8080/api";
 
 function fmtSize(b: number) {
     if (b < 1024) return `${b} B`;
@@ -69,9 +65,60 @@ function fileTypeLabel(type: string): string {
     return "Financial Report";
 }
 
-export default function MyListingsPage() {
-    const pathname = usePathname();
+const FilePickerRow = ({
+    label, icon, accept, files, onAdd, onRemove, inputRef,
+}: {
+    label: string; icon: string; accept: string;
+    files: File[]; onAdd: (f: File[]) => void;
+    onRemove: (i: number) => void;
+    inputRef: React.RefObject<HTMLInputElement | null>;
+}) => (
+    <div>
+        <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-sm">{icon}</span>
+            <span className="text-[11px] tracking-widest text-[#4f6380] font-bold uppercase">{label}</span>
+            <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                className="ml-auto text-xs bg-[#00cfa8]/10 text-[#00cfa8] hover:bg-[#00cfa8]/20 px-2.5 py-1 rounded font-semibold transition-colors"
+            >
+                + Add Files
+            </button>
+            <input
+                ref={inputRef}
+                type="file"
+                accept={accept}
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                    const incoming = Array.from(e.target.files ?? []);
+                    const unique = incoming.filter(f => !files.find(x => x.name === f.name && x.size === f.size));
+                    if (unique.length) onAdd(unique);
+                    e.target.value = "";
+                }}
+            />
+        </div>
+        {files.length > 0 && (
+            <ul className="space-y-1">
+                {files.map((f, i) => (
+                    <li key={i} className="flex items-center gap-2 bg-[#0d1220] border border-white/10 rounded-lg px-3 py-1.5">
+                        <span className="text-xs text-[#c7d2e0] flex-1 truncate">{f.name}</span>
+                        <span className="text-[10px] text-[#4f6380] flex-shrink-0">{fmtSize(f.size)}</span>
+                        <button
+                            type="button"
+                            onClick={() => onRemove(i)}
+                            className="w-4 h-4 flex items-center justify-center text-[#4f6380] hover:text-red-400 transition-colors flex-shrink-0 text-xs"
+                        >
+                            ✕
+                        </button>
+                    </li>
+                ))}
+            </ul>
+        )}
+    </div>
+);
 
+export default function MyListingsPage() {
     // Sidebar / user state
     const [profile, setProfile] = useState<{ fullName: string; verificationStatus: string } | null>(null);
     const [menuOpen, setMenuOpen] = useState(false);
@@ -112,34 +159,7 @@ export default function MyListingsPage() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    useEffect(() => {
-        fetchMyBusinesses();
-        fetchCats();
-        const userId = localStorage.getItem("userId");
-        if (userId) {
-            apiRequest<{ fullName: string; verificationStatus: string }>(`/seller/profile/${userId}`)
-                .then(setProfile)
-                .catch(() => {});
-        }
-    }, []);
-
-    function logout() {
-        localStorage.removeItem("token");
-        localStorage.removeItem("role");
-        localStorage.removeItem("userId");
-        window.location.href = "/login";
-    }
-
-    const fetchCats = async () => {
-        try {
-            const response = await apiRequest<{ data: { id: number; name: string }[] }>("/categories");
-            setCategories(response.data || []);
-        } catch (err) {
-            console.error("Failed to load categories", err);
-        }
-    };
-
-    const fetchMyBusinesses = async () => {
+    const fetchMyBusinesses = useCallback(async () => {
         const userId = localStorage.getItem("userId");
         if (!userId) {
             setError("You must be logged in to view your listings.");
@@ -154,7 +174,47 @@ export default function MyListingsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        let ignore = false;
+        const userId = localStorage.getItem("userId");
+
+        async function loadData() {
+            try {
+                const [catsRes, bizRes, profRes] = await Promise.allSettled([
+                    apiRequest<{ data: { id: number; name: string }[] }>("/categories"),
+                    userId ? apiRequest<{ data: Business[] }>(`/businesses/seller/${userId}`) : Promise.resolve({ data: [] }),
+                    userId ? apiRequest<{ fullName: string; verificationStatus: string }>(`/seller/profile/${userId}`) : Promise.resolve(null),
+                ]);
+
+                if (ignore) return;
+                if (catsRes.status === "fulfilled") setCategories(catsRes.value.data || []);
+                if (bizRes.status === "fulfilled" && "data" in bizRes.value) {
+                    setBusinesses(bizRes.value.data || []);
+                }
+                if (profRes.status === "fulfilled" && profRes.value) {
+                    setProfile(profRes.value);
+                }
+            } catch (err) {
+                console.error("Failed to load seller listings data", err);
+            } finally {
+                if (!ignore) setLoading(false);
+            }
+        }
+
+        loadData();
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
+    function logout() {
+        localStorage.removeItem("token");
+        localStorage.removeItem("role");
+        localStorage.removeItem("userId");
+        window.location.href = "/login";
+    }
 
     const fetchExistingFiles = async (businessId: number) => {
         setFilesLoading(true);
@@ -194,8 +254,12 @@ export default function MyListingsPage() {
             title: b.title,
             description: b.description,
             location: b.location,
+            address: b.address || "",
             askingPrice: String(b.askingPrice),
             category: b.category,
+            businessAgeYears: b.businessAgeYears !== undefined && b.businessAgeYears !== null ? String(b.businessAgeYears) : "",
+            numberOfEmployees: b.numberOfEmployees !== undefined && b.numberOfEmployees !== null ? String(b.numberOfEmployees) : "",
+            reasonForSelling: b.reasonForSelling || "",
         });
         setNewImageFiles([]);
         setNewDocFiles([]);
@@ -237,8 +301,12 @@ export default function MyListingsPage() {
                     title: editForm.title,
                     description: editForm.description,
                     location: editForm.location,
+                    address: editForm.address,
                     askingPrice: parseFloat(editForm.askingPrice),
                     category: editForm.category,
+                    businessAgeYears: editForm.businessAgeYears ? parseInt(editForm.businessAgeYears, 10) : null,
+                    numberOfEmployees: editForm.numberOfEmployees ? parseInt(editForm.numberOfEmployees, 10) : null,
+                    reasonForSelling: editForm.reasonForSelling,
                 }),
             });
 
@@ -280,59 +348,6 @@ export default function MyListingsPage() {
     if (error) return <p className="p-10 text-red-400">{error}</p>;
 
     const inputClass = "w-full bg-[#121c32] border border-white/10 text-[#c7d2e0] placeholder:text-[#4f6380] rounded-lg px-3 py-2 focus:outline-none focus:border-[#00cfa8]/50 transition-colors text-sm";
-
-    const FilePickerRow = ({
-        label, icon, accept, files, onAdd, onRemove, inputRef,
-    }: {
-        label: string; icon: string; accept: string;
-        files: File[]; onAdd: (f: File[]) => void;
-        onRemove: (i: number) => void;
-        inputRef: React.RefObject<HTMLInputElement | null>;
-    }) => (
-        <div>
-            <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-sm">{icon}</span>
-                <span className="text-[11px] tracking-widest text-[#4f6380] font-bold uppercase">{label}</span>
-                <button
-                    type="button"
-                    onClick={() => inputRef.current?.click()}
-                    className="ml-auto text-xs bg-[#00cfa8]/10 text-[#00cfa8] hover:bg-[#00cfa8]/20 px-2.5 py-1 rounded font-semibold transition-colors"
-                >
-                    + Add Files
-                </button>
-                <input
-                    ref={inputRef}
-                    type="file"
-                    accept={accept}
-                    multiple
-                    className="hidden"
-                    onChange={(e) => {
-                        const incoming = Array.from(e.target.files ?? []);
-                        const unique = incoming.filter(f => !files.find(x => x.name === f.name && x.size === f.size));
-                        if (unique.length) onAdd(unique);
-                        e.target.value = "";
-                    }}
-                />
-            </div>
-            {files.length > 0 && (
-                <ul className="space-y-1">
-                    {files.map((f, i) => (
-                        <li key={i} className="flex items-center gap-2 bg-[#0d1220] border border-white/10 rounded-lg px-3 py-1.5">
-                            <span className="text-xs text-[#c7d2e0] flex-1 truncate">{f.name}</span>
-                            <span className="text-[10px] text-[#4f6380] flex-shrink-0">{fmtSize(f.size)}</span>
-                            <button
-                                type="button"
-                                onClick={() => onRemove(i)}
-                                className="w-4 h-4 flex items-center justify-center text-[#4f6380] hover:text-red-400 transition-colors flex-shrink-0 text-xs"
-                            >
-                                ✕
-                            </button>
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </div>
-    );
 
     return (
         <div className="min-h-screen bg-[#080c15] text-[#c7d2e0] flex relative overflow-x-hidden">
@@ -527,6 +542,48 @@ export default function MyListingsPage() {
                                         />
                                     </div>
                                     <div>
+                                        <label className="block text-[11px] tracking-[0.1em] text-[#4f6380] mb-1">STREET ADDRESS (PRIVATE/CONFIDENTIAL)</label>
+                                        <input
+                                            className={inputClass}
+                                            placeholder="e.g. 123 Galle Road, Colombo 03"
+                                            value={editForm.address}
+                                            onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-[11px] tracking-[0.1em] text-[#4f6380] mb-1">BUSINESS AGE (YEARS)</label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                className={inputClass}
+                                                placeholder="e.g. 5"
+                                                value={editForm.businessAgeYears}
+                                                onChange={(e) => setEditForm({ ...editForm, businessAgeYears: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] tracking-[0.1em] text-[#4f6380] mb-1">EMPLOYEES</label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                className={inputClass}
+                                                placeholder="e.g. 12"
+                                                value={editForm.numberOfEmployees}
+                                                onChange={(e) => setEditForm({ ...editForm, numberOfEmployees: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] tracking-[0.1em] text-[#4f6380] mb-1">REASON FOR SELLING</label>
+                                        <input
+                                            className={inputClass}
+                                            placeholder="e.g. Relocating overseas"
+                                            value={editForm.reasonForSelling}
+                                            onChange={(e) => setEditForm({ ...editForm, reasonForSelling: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
                                         <label className="block text-[11px] tracking-[0.1em] text-[#4f6380] mb-1">DESCRIPTION</label>
                                         <textarea
                                             rows={3}
@@ -561,18 +618,17 @@ export default function MyListingsPage() {
                                                     <p className="text-sm text-[#c7d2e0] truncate">{file.originalName}</p>
                                                     <p className="text-[10px] text-[#4f6380]">{fileTypeLabel(file.fileType)}</p>
                                                 </div>
-                                                {/* Preview link */}
-                                                <a
-                                                    href={`${API}${file.url}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-[#4f6380] hover:text-[#00cfa8] transition-colors flex-shrink-0"
+                                                {/* Preview button */}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openAuthenticatedFile(file.url)}
+                                                    className="text-[#4f6380] hover:text-[#00cfa8] transition-colors flex-shrink-0 p-1"
                                                     title="Preview file"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                                     </svg>
-                                                </a>
+                                                </button>
                                                 {/* Delete button */}
                                                 <button
                                                     type="button"

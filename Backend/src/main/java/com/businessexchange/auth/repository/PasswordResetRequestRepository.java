@@ -13,4 +13,8 @@ public interface PasswordResetRequestRepository extends JpaRepository<PasswordRe
     Optional<PasswordResetRequest> findTopByUserIdOrderByCreatedAtDesc(Long userId);
 
     Optional<PasswordResetRequest> findByResetToken(String resetToken);
+
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("UPDATE PasswordResetRequest r SET r.attemptCount = r.attemptCount + 1 WHERE r.id = :id")
+    int incrementAttempts(@org.springframework.data.repository.query.Param("id") UUID id);
 }

@@ -22,19 +22,27 @@ export default function OfficerDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchSellers();
-  }, []);
-
-  const fetchSellers = async () => {
-    try {
-      const response = await apiRequest<{ data: SellerProfile[] }>("/admin/sellers");
-      setSellers(response.data || []);
-    } catch (err) {
-      console.error("Failed to fetch sellers", err);
-    } finally {
-      setLoading(false);
+    let ignore = false;
+    async function loadSellers() {
+      try {
+        const response = await apiRequest<{ data: SellerProfile[] }>("/admin/sellers");
+        if (!ignore) {
+          setSellers(response.data || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch sellers", err);
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
     }
-  };
+
+    loadSellers();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {

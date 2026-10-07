@@ -32,19 +32,28 @@ export default function SupportAgentDashboardPage() {
       router.push("/login");
       return;
     }
-    fetchAssignedTickets();
-  }, []);
 
-  const fetchAssignedTickets = async () => {
-    try {
-      const response = await apiRequest<{ data: Ticket[] }>("/agent/tickets/assigned");
-      setTickets(response.data || []);
-    } catch (err) {
-      console.error("Failed to fetch assigned tickets", err);
-    } finally {
-      setLoading(false);
+    let ignore = false;
+    async function loadTickets() {
+      try {
+        const response = await apiRequest<{ data: Ticket[] }>("/agent/tickets/assigned");
+        if (!ignore) {
+          setTickets(response.data || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch assigned tickets", err);
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
     }
-  };
+
+    loadTickets();
+    return () => {
+      ignore = true;
+    };
+  }, [router]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

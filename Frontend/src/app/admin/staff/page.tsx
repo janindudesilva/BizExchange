@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { apiRequest } from "@/lib/api";
 
 interface StaffMember {
@@ -24,11 +24,7 @@ export default function AdminStaffPage() {
   });
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    fetchStaff();
-  }, []);
-
-  const fetchStaff = async () => {
+  const fetchStaff = useCallback(async () => {
     try {
       const response = await apiRequest<{ data: StaffMember[] }>("/admin/staff");
       setStaff(response.data || []);
@@ -37,7 +33,30 @@ export default function AdminStaffPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+    async function loadData() {
+      try {
+        const response = await apiRequest<{ data: StaffMember[] }>("/admin/staff");
+        if (!ignore) {
+          setStaff(response.data || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch staff", err);
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadData();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();

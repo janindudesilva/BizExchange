@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api";
 
@@ -42,12 +42,7 @@ export default function OfficerSellerDetailPage() {
   const [rejectionReason, setRejectionReason] = useState("");
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    fetchSellerDetails();
-    fetchDocuments();
-  }, [sellerId]);
-
-  const fetchSellerDetails = async () => {
+  const fetchSellerDetails = useCallback(async () => {
     try {
       const response = await apiRequest<{ data: SellerProfile }>(`/admin/sellers/${sellerId}`);
       setSeller(response.data);
@@ -57,16 +52,32 @@ export default function OfficerSellerDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sellerId]);
 
-  const fetchDocuments = async () => {
-    try {
-      const response = await apiRequest<{ data: Document[] }>(`/admin/sellers/${sellerId}/documents`);
-      setDocuments(response.data || []);
-    } catch (err) {
-      console.error("Failed to fetch documents", err);
+  useEffect(() => {
+    let ignore = false;
+    async function loadData() {
+      try {
+        const [sRes, dRes] = await Promise.allSettled([
+          apiRequest<{ data: SellerProfile }>(`/admin/sellers/${sellerId}`),
+          apiRequest<{ data: Document[] }>(`/admin/sellers/${sellerId}/documents`),
+        ]);
+        if (ignore) return;
+        if (sRes.status === "fulfilled") setSeller(sRes.value.data);
+        if (dRes.status === "fulfilled") setDocuments(dRes.value.data || []);
+      } catch (err) {
+        console.error("Failed to fetch seller data", err);
+        if (!ignore) setMessage("Failed to load seller details");
+      } finally {
+        if (!ignore) setLoading(false);
+      }
     }
-  };
+
+    loadData();
+    return () => {
+      ignore = true;
+    };
+  }, [sellerId]);
 
   const handleAddNotes = async () => {
     try {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { apiRequest } from "@/lib/api";
 
@@ -40,14 +40,21 @@ export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const [token, setToken] = useState<string | null>(null);
-  const [role, setRole] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(() => typeof window !== "undefined" ? localStorage.getItem("token") : null);
+  const [role, setRole] = useState<string | null>(() => typeof window !== "undefined" ? localStorage.getItem("role") : null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [prevPathname, setPrevPathname] = useState(pathname);
   const [scrolled, setScrolled] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
+    setMobileMenuOpen(false);
+    setShowNotifications(false);
+  }
 
   // Track scroll for border opacity
   useEffect(() => {
@@ -56,13 +63,51 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  const fetchUnreadCount = useCallback(async () => {
+    if (!localStorage.getItem("token")) return;
+    try {
+      const response = await apiRequest<{ data: number }>("/notifications/unread/count");
+      setUnreadCount(response.data || 0);
+    } catch (err: unknown) {
+      const errObj = err as { status?: number; message?: string };
+      if (errObj?.status === 401 || errObj?.message?.includes("Unauthorized")) {
+        setToken(null);
+        setRole(null);
+        setUnreadCount(0);
+        return;
+      }
+      if (err instanceof TypeError && err.message === "Failed to fetch") return;
+      console.error("Failed to fetch unread count", err);
+    }
+  }, []);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!localStorage.getItem("token")) return;
+    try {
+      const response = await apiRequest<{ data: Notification[] }>("/notifications");
+      setNotifications(response.data || []);
+    } catch (err: unknown) {
+      const errObj = err as { status?: number; message?: string };
+      if (errObj?.status === 401 || errObj?.message?.includes("Unauthorized")) {
+        setToken(null);
+        setRole(null);
+        setNotifications([]);
+        return;
+      }
+      console.error("Failed to fetch notifications", err);
+    }
+  }, []);
+
   useEffect(() => {
     const handleAuthChange = () => {
-      setToken(localStorage.getItem("token"));
+      const currentToken = localStorage.getItem("token");
+      setToken(currentToken);
       setRole(localStorage.getItem("role"));
+      if (!currentToken) {
+        setUnreadCount(0);
+        setNotifications([]);
+      }
     };
-
-    handleAuthChange();
 
     window.addEventListener("auth-change", handleAuthChange);
     window.addEventListener("storage", handleAuthChange);
@@ -74,15 +119,38 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    if (token) {
-      fetchUnreadCount();
-      const interval = setInterval(fetchUnreadCount, 30000);
-      return () => clearInterval(interval);
-    } else {
-      setUnreadCount(0);
-      setNotifications([]);
+    if (!token) return;
+    let ignore = false;
+
+    async function loadInitialCount() {
+      if (!localStorage.getItem("token")) return;
+      try {
+        const response = await apiRequest<{ data: number }>("/notifications/unread/count");
+        if (!ignore) {
+          setUnreadCount(response.data || 0);
+        }
+      } catch (err: unknown) {
+        const errObj = err as { status?: number; message?: string };
+        if (errObj?.status === 401 || errObj?.message?.includes("Unauthorized")) {
+          if (!ignore) {
+            setToken(null);
+            setRole(null);
+            setUnreadCount(0);
+          }
+          return;
+        }
+        if (err instanceof TypeError && err.message === "Failed to fetch") return;
+        console.error("Failed to fetch unread count", err);
+      }
     }
-  }, [token]);
+
+    loadInitialCount();
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => {
+      ignore = true;
+      clearInterval(interval);
+    };
+  }, [token, fetchUnreadCount]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -93,44 +161,6 @@ export default function Navbar() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  useEffect(() => {
-    setMobileMenuOpen(false);
-    setShowNotifications(false);
-  }, [pathname]);
-
-  const fetchUnreadCount = async () => {
-    if (!localStorage.getItem("token")) return;
-    try {
-      const response = await apiRequest<{ data: number }>("/notifications/unread/count");
-      setUnreadCount(response.data || 0);
-    } catch (err: any) {
-      if (err?.status === 401 || err?.message?.includes("Unauthorized")) {
-        setToken(null);
-        setRole(null);
-        setUnreadCount(0);
-        return;
-      }
-      if (err instanceof TypeError && err.message === "Failed to fetch") return;
-      console.error("Failed to fetch unread count", err);
-    }
-  };
-
-  const fetchNotifications = async () => {
-    if (!localStorage.getItem("token")) return;
-    try {
-      const response = await apiRequest<{ data: Notification[] }>("/notifications");
-      setNotifications(response.data || []);
-    } catch (err: any) {
-      if (err?.status === 401 || err?.message?.includes("Unauthorized")) {
-        setToken(null);
-        setRole(null);
-        setNotifications([]);
-        return;
-      }
-      console.error("Failed to fetch notifications", err);
-    }
-  };
 
   const markAsRead = async (id: number) => {
     try {

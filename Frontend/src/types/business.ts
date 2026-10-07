@@ -15,6 +15,12 @@ export interface Business {
   location: string;
   askingPrice: number;
   status: string;
+  verificationStatus?: string;
+  address?: string;
+  businessAgeYears?: number;
+  numberOfEmployees?: number;
+  reasonForSelling?: string;
+  files?: BusinessFile[];
   rejectionReason?: string;
   isFavorited?: boolean;
   sellerId?: number;

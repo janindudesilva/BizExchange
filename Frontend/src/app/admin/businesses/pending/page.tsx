@@ -20,20 +20,29 @@ export default function PendingBusinessesPage() {
   const [error, setError] = useState("");
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
 
-  const fetchPending = async () => {
-    try {
-      setLoading(true);
-      const res = await apiRequest<{ data: Business[] }>("/admin/businesses/pending");
-      setBusinesses(res.data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load pending businesses");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchPending();
+    let ignore = false;
+    async function loadPending() {
+      try {
+        const res = await apiRequest<{ data: Business[] }>("/admin/businesses/pending");
+        if (!ignore) {
+          setBusinesses(res.data);
+        }
+      } catch (err) {
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : "Could not load pending businesses");
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadPending();
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const handleApprove = async (id: number) => {

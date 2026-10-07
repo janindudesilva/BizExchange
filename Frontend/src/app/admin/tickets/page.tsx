@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { apiRequest } from "@/lib/api";
 
 interface Ticket {
@@ -26,12 +26,7 @@ export default function AdminTicketsPage() {
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    fetchTickets();
-    fetchAgents();
-  }, []);
-
-  const fetchTickets = async () => {
+  const fetchTickets = useCallback(async () => {
     try {
       const response = await apiRequest<{ data: Ticket[] }>("/admin/tickets");
       setTickets(response.data || []);
@@ -40,16 +35,34 @@ export default function AdminTicketsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchAgents = async () => {
-    try {
-      const response = await apiRequest<{ data: { id: number; fullName: string; role: string }[] }>("/admin/staff");
-      setAgents(response.data?.filter((s) => s.role === "SUPPORT_AGENT") || []);
-    } catch (err) {
-      console.error("Failed to fetch agents", err);
+  useEffect(() => {
+    let ignore = false;
+    async function loadData() {
+      try {
+        const [tRes, aRes] = await Promise.allSettled([
+          apiRequest<{ data: Ticket[] }>("/admin/tickets"),
+          apiRequest<{ data: { id: number; fullName: string; role: string }[] }>("/admin/staff"),
+        ]);
+        if (!ignore) {
+          if (tRes.status === "fulfilled") setTickets(tRes.value.data || []);
+          if (aRes.status === "fulfilled") {
+            setAgents(aRes.value.data?.filter((s) => s.role === "SUPPORT_AGENT") || []);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch tickets or staff", err);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
     }
-  };
+
+    loadData();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const handleAssign = async () => {
     if (!selectedTicketId || !selectedAgentId) return;

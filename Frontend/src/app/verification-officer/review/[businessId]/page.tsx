@@ -3,9 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { apiRequest } from "@/lib/api";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+import { apiRequest, openAuthenticatedFile } from "@/lib/api";
 
 interface Business {
   id: number;
@@ -16,6 +14,15 @@ interface Business {
   askingPrice: number;
   sellerName?: string;
   verificationStatus: string;
+}
+
+interface VerificationRequest {
+  id: number;
+  businessId: number;
+  status: string;
+  remarks: string | null;
+  officerId: number | null;
+  officerName: string | null;
 }
 
 interface Document {
@@ -31,6 +38,7 @@ export default function VerificationOfficerReviewPage() {
   const router = useRouter();
   const businessId = Number(params.businessId);
   const [business, setBusiness] = useState<Business | null>(null);
+  const [verificationRequest, setVerificationRequest] = useState<VerificationRequest | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -46,39 +54,45 @@ export default function VerificationOfficerReviewPage() {
       router.push("/login");
       return;
     }
-    fetchBusinessDetails();
-    fetchDocuments();
-  }, [businessId]);
 
-  const fetchBusinessDetails = async () => {
-    try {
-      const response = await apiRequest<{ data: Business }>(`/businesses/${businessId}`);
-      setBusiness(response.data);
-    } catch (err) {
-      console.error("Failed to fetch business", err);
-      setMessage("Failed to load business details");
-    } finally {
-      setLoading(false);
+    let ignore = false;
+    async function loadAll() {
+      try {
+        const [bizRes, reqRes, docRes] = await Promise.allSettled([
+          apiRequest<{ data: Business }>(`/businesses/${businessId}`),
+          apiRequest<{ data: VerificationRequest }>(`/verification/business/${businessId}`),
+          apiRequest<{ data: Document[] }>(`/verification/${businessId}/documents`),
+        ]);
+        if (ignore) return;
+        if (bizRes.status === "fulfilled") setBusiness(bizRes.value.data);
+        if (reqRes.status === "fulfilled") setVerificationRequest(reqRes.value.data);
+        if (docRes.status === "fulfilled") setDocuments(docRes.value.data || []);
+      } catch (err) {
+        console.error("Failed to load verification review data", err);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
     }
-  };
 
-  const fetchDocuments = async () => {
-    try {
-      const response = await apiRequest<{ data: Document[] }>(`/verification/${businessId}/documents`);
-      setDocuments(response.data || []);
-    } catch (err) {
-      console.error("Failed to fetch documents", err);
-    }
-  };
+    loadAll();
+    return () => {
+      ignore = true;
+    };
+  }, [businessId, router]);
 
   const handleApprove = async () => {
-    if (!confirm("Are you confident to approve and publish this business listing?")) return;
+    const requestId = verificationRequest?.id;
+    if (!requestId) {
+      alert("No verification request found for this business.");
+      return;
+    }
+    if (!confirm("Are you confident to approve this business verification?")) return;
     setActionLoading(true);
     try {
-      await apiRequest(`/verification/${businessId}/approve`, {
+      await apiRequest(`/verification/${requestId}/approve`, {
         method: "POST",
       });
-      setMessage("Business verified and published successfully");
+      setMessage("Business verified successfully. It is now awaiting administrator publication.");
       setMessageType("success");
       setTimeout(() => router.push("/verification-officer/dashboard"), 1200);
     } catch (err) {
@@ -90,15 +104,20 @@ export default function VerificationOfficerReviewPage() {
   };
 
   const handleReject = async () => {
+    const requestId = verificationRequest?.id;
+    if (!requestId) {
+      alert("No verification request found for this business.");
+      return;
+    }
     if (!remarks.trim()) {
       alert("Please enter a rejection reason.");
       return;
     }
     setActionLoading(true);
     try {
-      await apiRequest(`/verification/${businessId}/reject`, {
+      await apiRequest(`/verification/${requestId}/reject`, {
         method: "POST",
-        body: JSON.stringify({ reason: remarks.trim() }),
+        body: JSON.stringify({ remarks: remarks.trim() }),
       });
       setMessage("Business rejected");
       setMessageType("success");
@@ -113,15 +132,20 @@ export default function VerificationOfficerReviewPage() {
   };
 
   const handleRequestMoreInfo = async () => {
+    const requestId = verificationRequest?.id;
+    if (!requestId) {
+      alert("No verification request found for this business.");
+      return;
+    }
     if (!remarks.trim()) {
       alert("Please provide the specific information requested.");
       return;
     }
     setActionLoading(true);
     try {
-      await apiRequest(`/verification/${businessId}/request-info`, {
+      await apiRequest(`/verification/${requestId}/request-info`, {
         method: "POST",
-        body: JSON.stringify({ message: remarks.trim() }),
+        body: JSON.stringify({ remarks: remarks.trim() }),
       });
       setMessage("Request for more information sent to seller");
       setMessageType("success");
@@ -273,7 +297,13 @@ export default function VerificationOfficerReviewPage() {
                       </div>
 
                       <button
-                        onClick={() => window.open(`${API_BASE}/verification/files/${doc.id}`, "_blank")}
+                        onClick={async () => {
+                          try {
+                            await openAuthenticatedFile(`/verification/files/${doc.id}`);
+                          } catch (err) {
+                            alert(err instanceof Error ? err.message : "Failed to open document");
+                          }
+                        }}
                         className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#00cfa8] text-[#070b14] hover:bg-[#00e6bc] transition-all"
                       >
                         Inspect File ↗

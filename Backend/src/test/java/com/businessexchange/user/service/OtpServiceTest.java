@@ -35,6 +35,9 @@ class OtpServiceTest {
     @Mock
     private EmailService emailService;
 
+    @Mock
+    private OtpAttemptService otpAttemptService;
+
     // Use a real BCrypt encoder for verification tests
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -94,12 +97,10 @@ class OtpServiceTest {
 
         when(userRepository.findByEmail("user@test.com")).thenReturn(Optional.of(testUser));
         when(otpRepository.findFirstByUserIdAndUsedFalseOrderByCreatedAtDesc(1L)).thenReturn(Optional.of(otp));
-        when(otpRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         boolean result = otpService.verifyOtp("user@test.com", rawOtp);
 
         assertThat(result).isTrue();
-        assertThat(otp.getAttemptCount()).isEqualTo(1);
     }
 
     @Test
@@ -120,14 +121,13 @@ class OtpServiceTest {
 
         when(userRepository.findByEmail("user@test.com")).thenReturn(Optional.of(testUser));
         when(otpRepository.findFirstByUserIdAndUsedFalseOrderByCreatedAtDesc(1L)).thenReturn(Optional.of(otp));
-        when(otpRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         assertThatThrownBy(() -> otpService.verifyOtp("user@test.com", "000000"))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Invalid OTP");
 
-        // Counter must still be incremented even on failure
-        assertThat(otp.getAttemptCount()).isEqualTo(1);
+        // Counter must be incremented atomically via OtpAttemptService
+        verify(otpAttemptService).incrementPasswordChangeOtpAttempt(11L);
     }
 
     @Test

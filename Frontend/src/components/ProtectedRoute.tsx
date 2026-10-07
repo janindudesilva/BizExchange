@@ -125,7 +125,7 @@ export default function ProtectedRoute({
         }
 
         setAuthStatus("AUTHORIZED");
-      } catch (err) {
+      } catch {
         if (!isMounted) return;
         // apiRequest clears token/role on 401 automatically
         setAuthStatus("UNAUTHENTICATED");

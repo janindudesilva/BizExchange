@@ -53,12 +53,6 @@ public class EmailService {
     }
 
     public void sendVerificationEmail(User user, String verificationLink) {
-        log.info("========================================");
-        log.info("EMAIL VERIFICATION LINK");
-        log.info("To: {}", user.getEmail());
-        log.info("{}", verificationLink);
-        log.info("========================================");
-
         if (mailSender != null) {
             try {
                 SimpleMailMessage message = new SimpleMailMessage();
@@ -70,6 +64,17 @@ public class EmailService {
                 log.info("Verification email sent to {}", user.getEmail());
             } catch (Exception e) {
                 log.error("Failed to send verification email via mailSender to {}: {}", user.getEmail(), e.getMessage());
+                if ("dev".equalsIgnoreCase(activeProfile) || "test".equalsIgnoreCase(activeProfile) || "local".equalsIgnoreCase(activeProfile)) {
+                    log.info("Development/local profile: Simulated verification email for {}", user.getEmail());
+                } else {
+                    throw new RuntimeException("Failed to send verification email. Please check email settings.", e);
+                }
+            }
+        } else {
+            if ("dev".equalsIgnoreCase(activeProfile) || "test".equalsIgnoreCase(activeProfile) || "local".equalsIgnoreCase(activeProfile)) {
+                log.info("Development/local profile: Verification email simulated for {}", user.getEmail());
+            } else {
+                throw new IllegalStateException("MailSender is not configured in environment: " + activeProfile);
             }
         }
     }
@@ -82,29 +87,31 @@ public class EmailService {
 
     @jakarta.annotation.PostConstruct
     public void init() {
-        log.info("EmailService initialized with active profile: {} and SMTP username: {}", activeProfile, mailUsername);
+        log.info("EmailService initialized with active profile: {}", activeProfile);
     }
-
 
     public void sendOtpEmail(String toEmail, String otp) {
         if (mailSender != null) {
             try {
                 SimpleMailMessage message = new SimpleMailMessage();
                 message.setTo(toEmail);
-                message.setSubject("Your password reset code");
-                message.setText("Your OTP is: " + otp + "\nIt expires in 10 minutes.");
+                message.setSubject("Your password reset code - BizExchange");
+                message.setText("Your OTP code is: " + otp + "\nIt expires in 10 minutes.");
                 mailSender.send(message);
                 log.info("OTP email sent successfully via SMTP to {}", toEmail);
                 return;
             } catch (Exception e) {
                 log.error("Failed to send OTP via JavaMailSender to {}: {}", toEmail, e.getMessage());
-                throw new RuntimeException("Failed to send OTP email. Please try again later.", e);
+                if ("dev".equalsIgnoreCase(activeProfile) || "test".equalsIgnoreCase(activeProfile) || "local".equalsIgnoreCase(activeProfile)) {
+                    log.info("Development/local profile: Simulated OTP dispatch for user {}", toEmail);
+                } else {
+                    throw new RuntimeException("Failed to send OTP email. Please try again later.", e);
+                }
             }
         }
 
-        if ("dev".equalsIgnoreCase(activeProfile) || "test".equalsIgnoreCase(activeProfile)) {
-            // Fallback for development/testing only - log receipt without leaking code in production
-            log.info("DEV FALLBACK (No MailSender) - PASSWORD RESET OTP EMAIL dispatched to: {}", toEmail);
+        if ("dev".equalsIgnoreCase(activeProfile) || "test".equalsIgnoreCase(activeProfile) || "local".equalsIgnoreCase(activeProfile)) {
+            log.info("Development/local profile (No MailSender): OTP dispatch simulated for user {}", toEmail);
         } else {
             throw new IllegalStateException("MailSender is not configured in environment: " + activeProfile);
         }

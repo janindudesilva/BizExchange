@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { apiRequest } from "@/lib/api";
 
 interface User {
@@ -19,11 +19,7 @@ export default function AdminUsersPage() {
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState<number | null>(null);
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       const response = await apiRequest<{ data: User[] }>("/admin/users");
       setUsers(response.data);
@@ -32,7 +28,32 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+    async function loadData() {
+      try {
+        const response = await apiRequest<{ data: User[] }>("/admin/users");
+        if (!ignore) {
+          setUsers(response.data);
+        }
+      } catch (err) {
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : "Failed to load users");
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadData();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const suspendUser = async (userId: number) => {
     setActionLoading(userId);

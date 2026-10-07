@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api";
 import SellerSidebar from "@/components/SellerSidebar";
 
@@ -23,7 +22,6 @@ interface Ticket {
 }
 
 export default function SellerSupportPage() {
-  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +38,7 @@ export default function SellerSupportPage() {
 
   const fetchTickets = async () => {
     try {
+      setLoading(true);
       const response = await apiRequest<{ data: Ticket[] }>("/tickets/my");
       setTickets(response.data || []);
     } catch (err) {
@@ -50,7 +49,21 @@ export default function SellerSupportPage() {
   };
 
   useEffect(() => {
-    fetchTickets();
+    let ignore = false;
+    async function loadTickets() {
+      try {
+        const response = await apiRequest<{ data: Ticket[] }>("/tickets/my");
+        if (!ignore) setTickets(response.data || []);
+      } catch (err) {
+        console.error("Failed to fetch tickets", err);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+    loadTickets();
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const handleCreateTicket = async (e: React.FormEvent) => {
@@ -71,8 +84,9 @@ export default function SellerSupportPage() {
         setSuccess("");
         fetchTickets();
       }, 1200);
-    } catch (err: any) {
-      setError(err?.message || "Failed to create ticket");
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "Failed to create ticket";
+      setError(errMsg);
     } finally {
       setCreating(false);
     }

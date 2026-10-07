@@ -11,10 +11,6 @@ export default function MyInquiriesPage() {
     const [error, setError] = useState("");
     const [submittingReview, setSubmittingReview] = useState<number | null>(null);
 
-    useEffect(() => {
-        fetchInquiries();
-    }, []);
-
     const fetchInquiries = async () => {
         try {
             const response = await apiRequest<InquiryApiResponse>("/inquiries/sent");
@@ -25,6 +21,31 @@ export default function MyInquiriesPage() {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        let ignore = false;
+        async function loadInquiries() {
+            try {
+                const response = await apiRequest<InquiryApiResponse>("/inquiries/sent");
+                if (!ignore) {
+                    setInquiries(response.data);
+                }
+            } catch (err) {
+                if (!ignore) {
+                    setError(err instanceof Error ? err.message : "Could not load your inquiries");
+                }
+            } finally {
+                if (!ignore) {
+                    setLoading(false);
+                }
+            }
+        }
+
+        loadInquiries();
+        return () => {
+            ignore = true;
+        };
+    }, []);
 
     const statusBadge = (status: string) => {
         switch (status) {
