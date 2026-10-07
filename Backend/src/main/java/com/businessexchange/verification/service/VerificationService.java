@@ -58,14 +58,25 @@ public class VerificationService {
             request.setRemarks(null);
             request.setVerifiedAt(null);
             request.setOfficer(null);
+
+            // Atomically transition listing back to PENDING_REVIEW and reset publication approval metadata
+            business.setStatus(com.businessexchange.business.entity.BusinessStatus.PENDING_REVIEW);
             business.setVerificationStatus(VerificationStatus.PENDING);
+            business.setApprovedAt(null);
+            business.setApprovedBy(null);
+            business.setRejectionReason(null);
             businessRepository.save(business);
+
             auditService.record(caller, "VERIFICATION_SUBMITTED", "BUSINESS", businessId, "Resubmitted listing for verification");
             return mapToDto(verificationRequestRepository.save(request));
         }
 
-        // Set business verification status to PENDING
+        // Set business verification status to PENDING and clear publication metadata
+        business.setStatus(com.businessexchange.business.entity.BusinessStatus.PENDING_REVIEW);
         business.setVerificationStatus(VerificationStatus.PENDING);
+        business.setApprovedAt(null);
+        business.setApprovedBy(null);
+        business.setRejectionReason(null);
 
         VerificationRequest request = VerificationRequest.builder()
                 .business(business)

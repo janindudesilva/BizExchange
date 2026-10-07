@@ -60,20 +60,26 @@ export default function RegisterPage() {
         body: JSON.stringify(payload),
       });
 
-      localStorage.setItem("token", result.data.token);
-      localStorage.setItem("role", result.data.role);
-      localStorage.setItem("userId", String(result.data.userId));
-      window.dispatchEvent(new Event("auth-change"));
+      if (result.data?.token) {
+        localStorage.setItem("token", result.data.token);
+        localStorage.setItem("role", result.data.role);
+        localStorage.setItem("userId", String(result.data.userId));
+        window.dispatchEvent(new Event("auth-change"));
 
-      setMessage(result.message || "Account registered successfully!");
+        setMessage(result.message || "Account registered successfully!");
 
-      setTimeout(() => {
-        if (result.data.role === "SELLER") {
-          router.push("/seller/dashboard");
-        } else {
-          router.push("/businesses");
-        }
-      }, 1000);
+        setTimeout(() => {
+          if (result.data.role === "SELLER") {
+            router.push("/seller/dashboard");
+          } else {
+            router.push("/businesses");
+          }
+        }, 1000);
+      } else {
+        setMessage(
+          "Account created successfully! We sent a verification link to your email. Please verify your email address before signing in."
+        );
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Registration failed. Please try again."

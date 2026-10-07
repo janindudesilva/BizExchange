@@ -39,9 +39,20 @@ public class RateLimiterFilter extends OncePerRequestFilter {
         this.trustForwardedHeaders = trustForwardedHeaders;
     }
 
+    @org.springframework.beans.factory.annotation.Value("${app.rate-limiter.enabled:true}")
+    private boolean enabled = true;
+
+    @org.springframework.beans.factory.annotation.Value("${app.test-mailbox.enabled:false}")
+    private boolean testMailboxEnabled = false;
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+
+        if (!enabled || (testMailboxEnabled && request.getRequestURI().startsWith("/api/test/mailbox"))) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         periodicCleanup();
 

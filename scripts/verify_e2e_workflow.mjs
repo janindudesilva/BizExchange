@@ -154,21 +154,47 @@ async function run() {
   });
   assert.ok(registerSeller.ok, `Seller register failed: ${JSON.stringify(registerSeller.data)}`);
   const sellerUserId = registerSeller.data.data.userId;
+  assert.equal(registerSeller.data.data.token, null, "Unverified registration must not issue access token");
 
-  // Auto-verify email if not verified
-  if (!registerSeller.data.data.emailVerified) {
-    const tokenRes = await post("/auth/test/get-verification-token", { email: sellerEmail });
-    if (tokenRes.ok && tokenRes.data?.data?.token) {
-      await post("/auth/verify-email", { token: tokenRes.data.data.token });
-    }
-  }
+  // 4a. Assert login is denied before email verification
+  console.log("    - Verifying that unverified seller login is rejected...");
+  const preVerifLogin = await post("/auth/login", {
+    email: sellerEmail,
+    password: sellerPass,
+  });
+  assert.equal(preVerifLogin.ok, false, "Unverified account login must be denied");
+  console.log("    ✓ Unverified seller login denied as expected.");
 
+  // 4b. Assert invalid token is rejected
+  console.log("    - Testing invalid verification token rejection...");
+  const badTokenRes = await post("/auth/verify-email", { token: "bad-token-12345" });
+  assert.equal(badTokenRes.ok, false, "Invalid verification token must be rejected");
+
+  // 4c. Extract real verification token from Test Mailbox
+  console.log("    - Extracting real verification token from Test Mailbox...");
+  const mailboxRes = await get(`/test/mailbox/latest-verification?email=${encodeURIComponent(sellerEmail)}`);
+  assert.ok(mailboxRes.ok, `Failed to retrieve test mailbox token: ${JSON.stringify(mailboxRes.data)}`);
+  const verificationToken = mailboxRes.data.data.token;
+  assert.ok(verificationToken, "Verification token must be present in test mailbox");
+
+  // 4d. Verify email with real token
+  const verifyRes = await post("/auth/verify-email", { token: verificationToken });
+  assert.ok(verifyRes.ok, `Email verification failed: ${JSON.stringify(verifyRes.data)}`);
+  console.log("    ✓ Verified email using test mailbox token.");
+
+  // 4e. Assert token reuse is rejected
+  const reuseRes = await post("/auth/verify-email", { token: verificationToken });
+  assert.equal(reuseRes.ok, false, "Used verification token reuse must be rejected");
+  console.log("    ✓ Verification token reuse rejected.");
+
+  // 4f. Login now succeeds
   const sellerLogin = await post("/auth/login", {
     email: sellerEmail,
     password: sellerPass,
   });
-  assert.ok(sellerLogin.ok, "Seller login failed");
+  assert.ok(sellerLogin.ok, "Seller login failed after verification");
   const sellerToken = sellerLogin.data.data.token;
+  assert.ok(sellerToken, "Authenticated seller must receive JWT token");
 
   // Officer approves seller profile
   const pendingSellers = await get("/admin/sellers/pending", officerToken);
@@ -350,6 +376,54 @@ async function run() {
   assert.equal(adminApprove.data.data.status, "APPROVED");
   console.log("    ✓ Admin approved listing. Public Marketplace Status: APPROVED");
 
+  // Verify visible in public marketplace
+  const pubListings = await get("/businesses");
+  assert.ok(pubListings.ok, "Public businesses fetch failed");
+  const pubItems = pubListings.data.data?.content || pubListings.data.data || [];
+  assert.ok(
+    pubItems.some((b) => b.id === bizId),
+    "Approved listing must be visible in public marketplace"
+  );
+  console.log("    ✓ Confirmed listing visible in public marketplace.");
+
+  // Test Verification & Publication Resubmission Transition
+  console.log("\n[10b] Testing Resubmission Transition (Reset to PENDING_REVIEW & Unpublishing)...");
+  const resubmitRes = await post(`/verification/submit/${bizId}`, {}, sellerToken);
+  assert.ok(resubmitRes.ok, `Resubmit for verification failed: ${JSON.stringify(resubmitRes.data)}`);
+  const resubmitReqId = resubmitRes.data.data.id;
+
+  // Verify listing is immediately unpublished and pending review
+  const sellerBizCheck = await get(`/businesses/${bizId}`, sellerToken);
+  assert.equal(sellerBizCheck.data.data.status, "PENDING_REVIEW", "Resubmitted listing status must be PENDING_REVIEW");
+  assert.equal(sellerBizCheck.data.data.verificationStatus, "PENDING", "Resubmitted listing verificationStatus must be PENDING");
+
+  // Verify hidden from public marketplace
+  const pubListingsDuringReview = await get("/businesses");
+  const reviewItems = pubListingsDuringReview.data.data?.content || pubListingsDuringReview.data.data || [];
+  assert.ok(
+    !reviewItems.some((b) => b.id === bizId),
+    "Resubmitted listing must NOT be visible in public marketplace during re-review"
+  );
+  console.log("    ✓ Resubmitted listing successfully hidden from public marketplace.");
+
+  // Officer re-approves
+  const officerReapprove = await post(`/verification/${resubmitReqId}/approve`, {}, officerToken);
+  assert.ok(officerReapprove.ok, "Officer re-approval failed");
+
+  // Verify STILL hidden from public marketplace until admin approves publication
+  const pubListingsAfterOfficer = await get("/businesses");
+  const afterOfficerItems = pubListingsAfterOfficer.data.data?.content || pubListingsAfterOfficer.data.data || [];
+  assert.ok(
+    !afterOfficerItems.some((b) => b.id === bizId),
+    "Listing must NOT be visible publicly after officer approval before admin publication"
+  );
+  console.log("    ✓ Listing remains hidden until Admin explicitly approves publication.");
+
+  // Admin approves publication again
+  const adminReapprove = await put(`/admin/businesses/${bizId}/approve`, {}, adminToken);
+  assert.ok(adminReapprove.ok, "Admin re-publication failed");
+  console.log("    ✓ Admin re-approved publication. Listing restored to public marketplace.");
+
   // 11. Buyer Registration, Inquiry, Seller Acceptance & Review
   console.log("\n[11] Buyer Registration & Inquiry Flow...");
   const buyerEmail = `buyer_${timestamp}@bizexchange.local`;
@@ -365,13 +439,21 @@ async function run() {
     budgetMax: 300000,
   });
   assert.ok(registerBuyer.ok, "Buyer registration failed");
+  assert.equal(registerBuyer.data.data.token, null, "Unverified buyer must not receive JWT token");
 
-  if (!registerBuyer.data.data.emailVerified) {
-    const tokenRes = await post("/auth/test/get-verification-token", { email: buyerEmail });
-    if (tokenRes.ok && tokenRes.data?.data?.token) {
-      await post("/auth/verify-email", { token: tokenRes.data.data.token });
-    }
-  }
+  // Verify unverified buyer cannot log in
+  const preVerifBuyerLogin = await post("/auth/login", { email: buyerEmail, password: buyerPass });
+  assert.equal(preVerifBuyerLogin.ok, false, "Unverified buyer login must be rejected");
+
+  // Retrieve buyer token from Test Mailbox
+  const buyerMailboxRes = await get(`/test/mailbox/latest-verification?email=${encodeURIComponent(buyerEmail)}`);
+  assert.ok(buyerMailboxRes.ok, "Failed to get buyer verification token from mailbox");
+  const buyerVerifToken = buyerMailboxRes.data.data.token;
+  assert.ok(buyerVerifToken, "Buyer verification token must exist");
+
+  const verifyBuyerRes = await post("/auth/verify-email", { token: buyerVerifToken });
+  assert.ok(verifyBuyerRes.ok, "Buyer email verification failed");
+  console.log("    ✓ Buyer email verified via test mailbox.");
 
   const buyerLogin = await post("/auth/login", { email: buyerEmail, password: buyerPass });
   assert.ok(buyerLogin.ok, "Buyer login failed");

@@ -48,6 +48,7 @@ class JwtSuspensionRegressionTest {
         sampleUser.setId(10L);
         sampleUser.setEmail("victim@bizexchange.com");
         sampleUser.setRole(UserRole.BUYER);
+        sampleUser.setEmailVerified(true);
     }
 
     @AfterEach
@@ -97,6 +98,28 @@ class JwtSuspensionRegressionTest {
         assertNotNull(SecurityContextHolder.getContext().getAuthentication(),
                 "Active user must be authenticated into SecurityContext");
         assertEquals(sampleUser.getEmail(), SecurityContextHolder.getContext().getAuthentication().getName());
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    @DisplayName("SECURITY: Unverified user JWT is rejected even if account status is ACTIVE")
+    void testUnverifiedUserJwtRejected() throws ServletException, IOException {
+        sampleUser.setStatus(AccountStatus.ACTIVE);
+        sampleUser.setEmailVerified(false);
+
+        String validToken = "valid.jwt.token";
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/businesses");
+        request.addHeader("Authorization", "Bearer " + validToken);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain filterChain = mock(FilterChain.class);
+
+        when(jwtService.extractEmail(validToken)).thenReturn(sampleUser.getEmail());
+        when(userDetailsService.loadUserByUsername(sampleUser.getEmail())).thenReturn(new UserPrincipal(sampleUser));
+
+        jwtAuthFilter.doFilter(request, response, filterChain);
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication(),
+                "Unverified user must not be authenticated even with a cryptographically valid JWT");
         verify(filterChain).doFilter(request, response);
     }
 }

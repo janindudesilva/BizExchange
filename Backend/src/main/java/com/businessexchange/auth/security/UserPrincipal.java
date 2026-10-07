@@ -55,6 +55,6 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return user.getStatus() == AccountStatus.ACTIVE;
+        return user.getStatus() == AccountStatus.ACTIVE && Boolean.TRUE.equals(user.getEmailVerified());
     }
 }

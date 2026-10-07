@@ -72,14 +72,12 @@ public class AuthService {
         String verificationLink = emailService.generateVerificationLink(verificationToken.getToken());
         emailService.sendVerificationEmail(savedUser, verificationLink);
 
-        String token = jwtService.generateToken(savedUser);
-
         return new AuthResponse(
                 savedUser.getId(),
                 savedUser.getFullName(),
                 savedUser.getEmail(),
                 savedUser.getRole().name(),
-                token);
+                null);
     }
 
     @Transactional
@@ -115,14 +113,12 @@ public class AuthService {
         String verificationLink = emailService.generateVerificationLink(verificationToken.getToken());
         emailService.sendVerificationEmail(savedUser, verificationLink);
 
-        String token = jwtService.generateToken(savedUser);
-
         return new AuthResponse(
                 savedUser.getId(),
                 savedUser.getFullName(),
                 savedUser.getEmail(),
                 savedUser.getRole().name(),
-                token);
+                null);
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -139,6 +135,11 @@ public class AuthService {
 
         if (user.getStatus() == AccountStatus.DELETED) {
             throw new BadCredentialsException("Account has been closed");
+        }
+
+        if (!Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new org.springframework.security.authentication.DisabledException(
+                    "Please verify your email address before logging in. Check your inbox or request a new verification link.");
         }
 
         user.setLastLoginAt(LocalDateTime.now());

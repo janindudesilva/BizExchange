@@ -43,7 +43,7 @@ function VerifyEmailContent() {
     return () => {
       ignore = true;
     };
-  }, [token]);
+  }, [token, searchParams]);
 
   return (
     <div className="max-w-md w-full glass-panel rounded-2xl p-8 border border-white/10 shadow-2xl relative overflow-hidden">

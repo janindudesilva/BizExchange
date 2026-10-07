@@ -25,6 +25,9 @@ public class EmailService {
     @Autowired(required = false)
     private JavaMailSender mailSender;
 
+    @Autowired(required = false)
+    private com.businessexchange.common.test.TestMailbox testMailbox;
+
     @Value("${app.verification.token.expiry.hours:24}")
     private int tokenExpiryHours;
 
@@ -53,6 +56,13 @@ public class EmailService {
     }
 
     public void sendVerificationEmail(User user, String verificationLink) {
+        if (testMailbox != null) {
+            String token = verificationLink != null && verificationLink.contains("token=")
+                    ? verificationLink.substring(verificationLink.indexOf("token=") + 6)
+                    : null;
+            testMailbox.recordEmail(user.getEmail(), "verification", verificationLink, token);
+        }
+
         if (mailSender != null) {
             try {
                 SimpleMailMessage message = new SimpleMailMessage();
@@ -91,6 +101,10 @@ public class EmailService {
     }
 
     public void sendOtpEmail(String toEmail, String otp) {
+        if (testMailbox != null) {
+            testMailbox.recordEmail(toEmail, "otp", null, otp);
+        }
+
         if (mailSender != null) {
             try {
                 SimpleMailMessage message = new SimpleMailMessage();

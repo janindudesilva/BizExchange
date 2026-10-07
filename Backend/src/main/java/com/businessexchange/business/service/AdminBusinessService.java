@@ -116,7 +116,9 @@ public class AdminBusinessService {
     }
 
     public List<BusinessResponse> getPendingBusinesses() {
-        List<Business> pending = businessRepository.findByStatus(BusinessStatus.PENDING_REVIEW);
+        List<Business> pending = businessRepository.findByStatus(BusinessStatus.PENDING_REVIEW).stream()
+                .filter(b -> b.getVerificationStatus() == com.businessexchange.seller.entity.VerificationStatus.APPROVED)
+                .toList();
         return businessService.mapListToResponses(pending, null);
     }
 }

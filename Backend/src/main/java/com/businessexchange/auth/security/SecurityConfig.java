@@ -33,6 +33,9 @@ public class SecurityConfig {
     @Value("${cors.allowed-origins:http://localhost:3000}")
     private String allowedOriginsStr;
 
+    @Value("${app.test-mailbox.enabled:false}")
+    private boolean testMailboxEnabled;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -49,9 +52,12 @@ public class SecurityConfig {
             )
             .exceptionHandling(exception -> exception.authenticationEntryPoint(jwtAuthenticationEntryPoint))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+            .authorizeHttpRequests(auth -> {
+                auth.requestMatchers("/api/auth/**").permitAll();
+                if (testMailboxEnabled) {
+                    auth.requestMatchers("/api/test/mailbox/**").permitAll();
+                }
+                auth.requestMatchers("/actuator/health", "/actuator/info").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET,
                         "/api/businesses",
@@ -61,8 +67,8 @@ public class SecurityConfig {
                         "/api/verification/{businessId:[0-9]+}/documents",
                         "/api/verification/files/{fileId:[0-9]+}",
                         "/api/categories").permitAll()
-               .anyRequest().authenticated()
-            );
+                .anyRequest().authenticated();
+            });
 
         http.addFilterBefore(rateLimiterFilter, UsernamePasswordAuthenticationFilter.class);
         http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

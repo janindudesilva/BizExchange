@@ -1,0 +1,11 @@
+# Auto detect text files and perform LF normalization on checkout
+* text=auto
+
+# Linux shell scripts and Maven wrapper must strictly have LF line endings
+Backend/mvnw text eol=lf
+*.sh text eol=lf
+
+# Windows batch files must retain CRLF line endings
+Backend/mvnw.cmd text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf

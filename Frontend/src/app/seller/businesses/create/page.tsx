@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiRequest, apiUpload } from "@/lib/api";
+import { validateUploadFile } from "@/lib/fileValidation";
 import SellerSidebar from "@/components/SellerSidebar";
 
 
@@ -31,6 +32,7 @@ interface FileDropZoneProps {
   hint: string;
   sub: string;
   accept: string;
+  category: "IMAGE" | "DOCUMENT" | "FINANCIAL_REPORT";
   iconClass: string;
   icon: string;
   badge: string;
@@ -40,18 +42,17 @@ interface FileDropZoneProps {
 }
 
 function FileDropZone({
-  label, hint, sub, accept, iconClass, icon, badge, files, onAdd, onRemove,
+  label, hint, sub, accept, category, iconClass, icon, badge, files, onAdd, onRemove,
 }: FileDropZoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
-  const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
-
   const addUnique = (incoming: File[]) => {
     const valid: File[] = [];
     for (const f of incoming) {
-      if (f.size > MAX_FILE_SIZE) {
-        alert(`File "${f.name}" (${fmtSize(f.size)}) exceeds the maximum allowed limit of 20 MB.`);
+      const check = validateUploadFile(f, category);
+      if (!check.valid) {
+        alert(check.error);
         continue;
       }
       if (!files.find((x) => x.name === f.name && x.size === f.size)) {
@@ -521,7 +522,8 @@ export default function CreateBusinessPage() {
                   label="Business photos"
                   hint="Drop photos here or browse"
                   sub="Multiple photos allowed · max 20 MB each"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                  category="IMAGE"
                   iconClass="text-blue-400 bg-blue-500/20"
                   icon="📷"
                   badge="JPG · PNG · WEBP"
@@ -534,7 +536,8 @@ export default function CreateBusinessPage() {
                   label="Business documents"
                   hint="Drop documents here or browse"
                   sub="Licences, registrations, ownership docs (PDF · max 20 MB each)"
-                  accept="application/pdf"
+                  accept=".pdf,application/pdf"
+                  category="DOCUMENT"
                   iconClass="text-[#00cfa8] bg-[#00cfa8]/20"
                   icon="📄"
                   badge="PDF"
@@ -547,7 +550,8 @@ export default function CreateBusinessPage() {
                   label="Financial reports"
                   hint="Drop reports here or browse"
                   sub="P&L statements, balance sheets, tax returns (PDF · max 20 MB each)"
-                  accept="application/pdf"
+                  accept=".pdf,application/pdf"
+                  category="FINANCIAL_REPORT"
                   iconClass="text-[#f5a623] bg-[#f5a623]/20"
                   icon="📊"
                   badge="PDF"

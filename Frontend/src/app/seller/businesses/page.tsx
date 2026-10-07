@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { apiRequest, apiUpload, openAuthenticatedFile } from "@/lib/api";
+import { validateUploadFile, formatFileSize } from "@/lib/fileValidation";
 import SellerSidebar from "@/components/SellerSidebar";
 
 function initials(name: string | undefined): string {
@@ -66,17 +67,21 @@ function fileTypeLabel(type: string): string {
 }
 
 const FilePickerRow = ({
-    label, icon, accept, files, onAdd, onRemove, inputRef,
+    label, icon, badge, accept, category, files, onAdd, onRemove, inputRef,
 }: {
-    label: string; icon: string; accept: string;
+    label: string; icon: string; badge: string; accept: string;
+    category: "IMAGE" | "DOCUMENT" | "FINANCIAL_REPORT";
     files: File[]; onAdd: (f: File[]) => void;
     onRemove: (i: number) => void;
     inputRef: React.RefObject<HTMLInputElement | null>;
 }) => (
     <div>
-        <div className="flex items-center gap-2 mb-1.5">
+        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             <span className="text-sm">{icon}</span>
             <span className="text-[11px] tracking-widest text-[#4f6380] font-bold uppercase">{label}</span>
+            <span className="text-[10px] text-[#4f6380] bg-white/5 border border-white/5 px-2 py-0.5 rounded-full font-normal">
+                {badge}
+            </span>
             <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
@@ -92,8 +97,18 @@ const FilePickerRow = ({
                 className="hidden"
                 onChange={(e) => {
                     const incoming = Array.from(e.target.files ?? []);
-                    const unique = incoming.filter(f => !files.find(x => x.name === f.name && x.size === f.size));
-                    if (unique.length) onAdd(unique);
+                    const valid: File[] = [];
+                    for (const f of incoming) {
+                        const check = validateUploadFile(f, category);
+                        if (!check.valid) {
+                            alert(check.error);
+                            continue;
+                        }
+                        if (!files.find(x => x.name === f.name && x.size === f.size)) {
+                            valid.push(f);
+                        }
+                    }
+                    if (valid.length) onAdd(valid);
                     e.target.value = "";
                 }}
             />
@@ -544,6 +559,7 @@ export default function MyListingsPage() {
                                     <div>
                                         <label className="block text-[11px] tracking-[0.1em] text-[#4f6380] mb-1">STREET ADDRESS (PRIVATE/CONFIDENTIAL)</label>
                                         <input
+                                            name="address"
                                             className={inputClass}
                                             placeholder="e.g. 123 Galle Road, Colombo 03"
                                             value={editForm.address}
@@ -554,6 +570,7 @@ export default function MyListingsPage() {
                                         <div>
                                             <label className="block text-[11px] tracking-[0.1em] text-[#4f6380] mb-1">BUSINESS AGE (YEARS)</label>
                                             <input
+                                                name="businessAgeYears"
                                                 type="number"
                                                 min="0"
                                                 className={inputClass}
@@ -565,6 +582,7 @@ export default function MyListingsPage() {
                                         <div>
                                             <label className="block text-[11px] tracking-[0.1em] text-[#4f6380] mb-1">EMPLOYEES</label>
                                             <input
+                                                name="numberOfEmployees"
                                                 type="number"
                                                 min="0"
                                                 className={inputClass}
@@ -577,6 +595,7 @@ export default function MyListingsPage() {
                                     <div>
                                         <label className="block text-[11px] tracking-[0.1em] text-[#4f6380] mb-1">REASON FOR SELLING</label>
                                         <input
+                                            name="reasonForSelling"
                                             className={inputClass}
                                             placeholder="e.g. Relocating overseas"
                                             value={editForm.reasonForSelling}
@@ -662,7 +681,9 @@ export default function MyListingsPage() {
                                     <FilePickerRow
                                         label="Business Photos"
                                         icon="📷"
-                                        accept="image/*"
+                                        badge="JPG · PNG · WEBP (Max 20 MB)"
+                                        accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                                        category="IMAGE"
                                         files={newImageFiles}
                                         onAdd={(f) => setNewImageFiles((p) => [...p, ...f])}
                                         onRemove={(i) => setNewImageFiles((p) => p.filter((_, idx) => idx !== i))}
@@ -671,7 +692,9 @@ export default function MyListingsPage() {
                                     <FilePickerRow
                                         label="Business Documents"
                                         icon="📄"
-                                        accept=".pdf,.doc,.docx,application/pdf,application/msword"
+                                        badge="PDF only (Max 20 MB)"
+                                        accept=".pdf,application/pdf"
+                                        category="DOCUMENT"
                                         files={newDocFiles}
                                         onAdd={(f) => setNewDocFiles((p) => [...p, ...f])}
                                         onRemove={(i) => setNewDocFiles((p) => p.filter((_, idx) => idx !== i))}
@@ -680,7 +703,9 @@ export default function MyListingsPage() {
                                     <FilePickerRow
                                         label="Financial Reports"
                                         icon="📊"
-                                        accept=".pdf,.xlsx,.xls"
+                                        badge="PDF only (Max 20 MB)"
+                                        accept=".pdf,application/pdf"
+                                        category="FINANCIAL_REPORT"
                                         files={newFinancialFiles}
                                         onAdd={(f) => setNewFinancialFiles((p) => [...p, ...f])}
                                         onRemove={(i) => setNewFinancialFiles((p) => p.filter((_, idx) => idx !== i))}

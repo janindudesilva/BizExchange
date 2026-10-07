@@ -19,6 +19,12 @@ public class GlobalExceptionHandler {
         return ApiResponse.error(ex.getMessage());
     }
 
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ApiResponse<Object> handleNoResourceFound(org.springframework.web.servlet.resource.NoResourceFoundException ex) {
+        return ApiResponse.error("The requested resource was not found: " + ex.getResourcePath());
+    }
+
     @ExceptionHandler(DuplicateResourceException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     public ApiResponse<Object> handleDuplicate(DuplicateResourceException ex) {
