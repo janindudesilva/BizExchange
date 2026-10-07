@@ -405,14 +405,26 @@ public class PostgreSqlFlywayMigrationIntegrationTest {
                     "(952, 902, 802, 'Message inside second pre-V5 inquiry 902')");
 
             // Step 3: Run documented protection procedure BEFORE V5 that closes duplicates without deleting records
-            stmt.execute("UPDATE inquiries i1 " +
-                    "SET status = 'CLOSED' " +
-                    "FROM inquiries i2 " +
-                    "WHERE i1.buyer_id = i2.buyer_id " +
-                    "  AND i1.business_id = i2.business_id " +
-                    "  AND i1.status IN ('PENDING_APPROVAL', 'ACTIVE') " +
-                    "  AND i2.status IN ('PENDING_APPROVAL', 'ACTIVE') " +
-                    "  AND i1.id < i2.id");
+            // Execute the shipped protection SQL file directly instead of maintaining a separate hardcoded copy
+            String protectionSql = null;
+            try (java.io.InputStream is = getClass().getResourceAsStream("/db/upgrade/pre_v5_inquiry_data_protection.sql")) {
+                if (is != null) {
+                    protectionSql = new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                }
+            } catch (Exception ignored) {
+            }
+            if (protectionSql == null) {
+                java.nio.file.Path scriptPath = java.nio.file.Path.of("src/main/resources/db/upgrade/pre_v5_inquiry_data_protection.sql");
+                if (!java.nio.file.Files.exists(scriptPath)) {
+                    scriptPath = java.nio.file.Path.of("Backend/src/main/resources/db/upgrade/pre_v5_inquiry_data_protection.sql");
+                }
+                try {
+                    protectionSql = java.nio.file.Files.readString(scriptPath, java.nio.charset.StandardCharsets.UTF_8);
+                } catch (java.io.IOException e) {
+                    throw new RuntimeException("Failed to read shipped pre_v5_inquiry_data_protection.sql", e);
+                }
+            }
+            stmt.execute(protectionSql);
         }
 
         // Step 4: Apply V5 through V9 with Flyway validation enabled

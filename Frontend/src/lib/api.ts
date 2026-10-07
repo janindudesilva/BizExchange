@@ -109,24 +109,44 @@ export async function downloadAuthenticatedFile(
 export async function openAuthenticatedFile(
   fileUrlOrEndpoint: string
 ): Promise<void> {
+  // Open window synchronously to preserve user click gesture and prevent popup blockers
+  let newWindow: Window | null = null;
+  if (typeof window !== "undefined") {
+    newWindow = window.open("about:blank", "_blank");
+  }
+
   const token =
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const fullUrl = fileUrlOrEndpoint.startsWith("http")
     ? fileUrlOrEndpoint
     : `${API_BASE_URL}${fileUrlOrEndpoint.startsWith("/") ? "" : "/"}${fileUrlOrEndpoint}`;
 
-  const response = await fetch(fullUrl, {
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
+  try {
+    const response = await fetch(fullUrl, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
 
-  if (!response.ok) {
-    throw new ApiError("Failed to open file", response.status);
+    if (!response.ok) {
+      if (newWindow && !newWindow.closed) {
+        newWindow.close();
+      }
+      throw new ApiError("Failed to open file", response.status);
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    if (newWindow && !newWindow.closed) {
+      newWindow.location.href = url;
+    } else {
+      window.open(url, "_blank");
+    }
+    setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+  } catch (err) {
+    if (newWindow && !newWindow.closed) {
+      newWindow.close();
+    }
+    throw err;
   }
-
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  window.open(url, "_blank");
-  setTimeout(() => window.URL.revokeObjectURL(url), 60000);
 }

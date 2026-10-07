@@ -40,6 +40,14 @@ public class AdminBusinessService {
             throw new org.springframework.security.access.AccessDeniedException("Only administrators can approve businesses");
         }
 
+        if (business.getStatus() == BusinessStatus.APPROVED) {
+            throw new IllegalStateException("Business is already approved and published");
+        }
+
+        if (business.getStatus() == BusinessStatus.REJECTED) {
+            throw new IllegalStateException("Cannot publish a rejected business without re-verification");
+        }
+
         if (business.getVerificationStatus() != com.businessexchange.seller.entity.VerificationStatus.APPROVED) {
             throw new IllegalStateException("Business cannot be published without prior verification officer approval");
         }
@@ -75,6 +83,10 @@ public class AdminBusinessService {
 
     @Transactional
     public BusinessResponse rejectBusiness(Long businessId, String adminEmail, String reason) {
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new IllegalArgumentException("Reason is required for rejection");
+        }
+
         Business business = businessRepository.findById(businessId)
                 .orElseThrow(() -> new ResourceNotFoundException("Business not found"));
 
@@ -85,11 +97,15 @@ public class AdminBusinessService {
             throw new org.springframework.security.access.AccessDeniedException("Only administrators can reject businesses");
         }
 
+        if (business.getStatus() == BusinessStatus.REJECTED) {
+            throw new IllegalStateException("Business is already rejected");
+        }
+
         business.setStatus(BusinessStatus.REJECTED);
         business.setVerificationStatus(com.businessexchange.seller.entity.VerificationStatus.REJECTED);
         business.setApprovedBy(admin);
         business.setApprovedAt(null);
-        business.setRejectionReason(reason);
+        business.setRejectionReason(reason.trim());
 
         // Atomically synchronize VerificationRequest
         verificationRequestRepository.findByBusinessId(businessId).ifPresent(vr -> {

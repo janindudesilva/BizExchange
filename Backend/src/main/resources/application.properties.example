@@ -88,3 +88,10 @@ resend.from-address=onboarding@resend.dev
 # ------------------------------------------------------------------------------
 cors.allowed-origins=http://localhost:3000
 management.endpoints.web.exposure.include=health,info
+
+# ------------------------------------------------------------------------------
+# Test Mailbox (Disabled by default; enable ONLY for local automated E2E tests)
+# ------------------------------------------------------------------------------
+# Strictly inactive in production. Must be set to true only in isolated local/test
+# environments when running verify_e2e_workflow.mjs or verify_browser_flows.mjs.
+app.test-mailbox.enabled=false

@@ -54,6 +54,9 @@ public class VerificationService {
         var existing = verificationRequestRepository.findByBusinessId(businessId);
         if (existing.isPresent()) {
             VerificationRequest request = existing.get();
+            if (request.getStatus() == VerificationStatus.PENDING) {
+                throw new IllegalStateException("Verification request is already pending review");
+            }
             request.setStatus(VerificationStatus.PENDING);
             request.setRemarks(null);
             request.setVerifiedAt(null);
@@ -164,6 +167,9 @@ public class VerificationService {
     @Transactional
     public VerificationRequestDto assignToOfficer(Long requestId, Long officerId) {
         VerificationRequest request = getRequestById(requestId);
+        if (request.getStatus() == VerificationStatus.APPROVED || request.getStatus() == VerificationStatus.REJECTED) {
+            throw new IllegalStateException("Cannot assign a verification request that has already been decided");
+        }
 
         User officer = getValidOfficer(officerId);
 
@@ -177,8 +183,14 @@ public class VerificationService {
     @Transactional
     public VerificationRequestDto approve(Long requestId, Long officerId) {
         VerificationRequest request = getRequestById(requestId);
-
         User officer = getValidOfficer(officerId);
+
+        if (request.getStatus() == VerificationStatus.APPROVED) {
+            throw new IllegalStateException("Verification request is already approved");
+        }
+        if (request.getStatus() == VerificationStatus.REJECTED) {
+            throw new IllegalStateException("Cannot approve a rejected verification request without resubmission");
+        }
 
         request.setOfficer(officer);
         request.setStatus(VerificationStatus.APPROVED);
@@ -186,6 +198,12 @@ public class VerificationService {
 
         Business business = request.getBusiness();
         business.setVerificationStatus(VerificationStatus.APPROVED);
+
+        // Enforce valid backend transitions: Officer approval verifies the listing,
+        // but it MUST leave it waiting for fresh admin publication approval.
+        business.setStatus(com.businessexchange.business.entity.BusinessStatus.PENDING_REVIEW);
+        business.setApprovedBy(null);
+        business.setApprovedAt(null);
 
         VerificationRequest saved = verificationRequestRepository.save(request);
         businessRepository.save(business);
@@ -204,27 +222,40 @@ public class VerificationService {
 
     @Transactional
     public VerificationRequestDto reject(Long requestId, Long officerId, String remarks) {
+        if (remarks == null || remarks.trim().isEmpty()) {
+            throw new IllegalArgumentException("Remarks are required for rejection");
+        }
         VerificationRequest request = getRequestById(requestId);
-
         User officer = getValidOfficer(officerId);
+
+        if (request.getStatus() == VerificationStatus.REJECTED) {
+            throw new IllegalStateException("Verification request is already rejected");
+        }
 
         request.setOfficer(officer);
         request.setStatus(VerificationStatus.REJECTED);
-        request.setRemarks(remarks);
+        request.setRemarks(remarks.trim());
         request.setVerifiedAt(LocalDateTime.now());
 
         Business business = request.getBusiness();
         business.setVerificationStatus(VerificationStatus.REJECTED);
 
+        // When a published listing legitimately enters re-review or is rejected,
+        // immediately remove public visibility and clear current publication approval metadata.
+        business.setStatus(com.businessexchange.business.entity.BusinessStatus.REJECTED);
+        business.setApprovedBy(null);
+        business.setApprovedAt(null);
+        business.setRejectionReason(remarks.trim());
+
         VerificationRequest saved = verificationRequestRepository.save(request);
         businessRepository.save(business);
-        auditService.record(officer, "VERIFICATION_REJECTED", "VERIFICATION_REQUEST", requestId, "Officer rejected business: " + business.getTitle() + ". Reason: " + remarks);
+        auditService.record(officer, "VERIFICATION_REJECTED", "VERIFICATION_REQUEST", requestId, "Officer rejected business: " + business.getTitle() + ". Reason: " + remarks.trim());
 
         // Notify seller
         notificationService.notify(
                 business.getSeller(),
                 "BUSINESS_REJECTED",
-                "Your business listing '" + business.getTitle() + "' was rejected. Reason: " + remarks,
+                "Your business listing '" + business.getTitle() + "' was rejected. Reason: " + remarks.trim(),
                 "/seller/businesses"
         );
 
@@ -233,26 +264,42 @@ public class VerificationService {
 
     @Transactional
     public VerificationRequestDto requestMoreInfo(Long requestId, Long officerId, String remarks) {
+        if (remarks == null || remarks.trim().isEmpty()) {
+            throw new IllegalArgumentException("Remarks are required when requesting more information");
+        }
         VerificationRequest request = getRequestById(requestId);
-
         User officer = getValidOfficer(officerId);
+
+        if (request.getStatus() == VerificationStatus.NEEDS_MORE_INFORMATION) {
+            throw new IllegalStateException("Verification request is already awaiting more information");
+        }
+        if (request.getStatus() == VerificationStatus.REJECTED) {
+            throw new IllegalStateException("Cannot request more information on a rejected verification request");
+        }
 
         request.setOfficer(officer);
         request.setStatus(VerificationStatus.NEEDS_MORE_INFORMATION);
-        request.setRemarks(remarks);
+        request.setRemarks(remarks.trim());
 
         Business business = request.getBusiness();
         business.setVerificationStatus(VerificationStatus.NEEDS_MORE_INFORMATION);
 
+        // When a published listing legitimately enters re-review,
+        // immediately remove public visibility and clear current publication approval metadata.
+        business.setStatus(com.businessexchange.business.entity.BusinessStatus.PENDING_REVIEW);
+        business.setApprovedBy(null);
+        business.setApprovedAt(null);
+        business.setRejectionReason(remarks.trim());
+
         VerificationRequest saved = verificationRequestRepository.save(request);
         businessRepository.save(business);
-        auditService.record(officer, "VERIFICATION_INFO_REQUESTED", "VERIFICATION_REQUEST", requestId, "More information requested for business: " + business.getTitle() + ". Remarks: " + remarks);
+        auditService.record(officer, "VERIFICATION_INFO_REQUESTED", "VERIFICATION_REQUEST", requestId, "More information requested for business: " + business.getTitle() + ". Remarks: " + remarks.trim());
 
         // Notify seller
         notificationService.notify(
                 business.getSeller(),
                 "BUSINESS_NEEDS_INFO",
-                "Your business listing '" + business.getTitle() + "' needs more information. " + remarks,
+                "Your business listing '" + business.getTitle() + "' needs more information. " + remarks.trim(),
                 "/seller/businesses"
         );
 

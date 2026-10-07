@@ -333,8 +333,11 @@ export default function VerificationOfficerReviewPage() {
                 onClick={handleApprove}
                 className="w-full py-3 px-4 rounded-xl text-xs font-bold bg-[#00cfa8] text-[#070b14] hover:bg-[#00e6bc] transition-all shadow-[0_0_16px_rgba(0,207,168,0.25)] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <span>✓ Approve & Publish Listing</span>
+                <span>✓ Approve Verification</span>
               </button>
+              <p className="text-[11px] text-[#8493a8] text-center px-1">
+                Approving marks this business as verified. Administrator publication approval follows separately before the listing becomes publicly visible.
+              </p>
 
               <button
                 disabled={actionLoading}

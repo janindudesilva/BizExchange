@@ -4,8 +4,8 @@ BizExchange is a full-stack platform for listing, verifying, and acquiring small
 
 The system features:
 - **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Vanilla CSS design system.
-- **Backend**: Spring Boot 3.4, Java 17, Spring Security 6 (JWT authentication), JPA/Hibernate.
-- **Database**: PostgreSQL with automated Flyway database migrations (`V1` to `V5`).
+- **Backend**: Spring Boot 3.3.4, Java 17, Spring Security 6 (JWT authentication), JPA/Hibernate.
+- **Database**: PostgreSQL with automated Flyway database migrations (`V1` through `V9`).
 
 ---
 
@@ -14,7 +14,13 @@ The system features:
 1. **Java Development Kit (JDK)**: Version 17 or higher
 2. **Node.js**: Version 18.x or 20.x+ with npm
 3. **PostgreSQL**: Version 14 or higher (or Docker)
-4. **Maven**: Optional (bundled Maven Wrapper `./mvnw` or `mvnw.cmd` included in `Backend/`)
+4. **Maven**: Bundled Maven Wrapper (`./mvnw` or `mvnw.cmd` included in `Backend/`)
+
+> **Linux / macOS Note on Maven Wrapper Permissions**:
+> The repository preserves executable Git file mode (`100755`) and LF line endings for `Backend/mvnw`. If extracted from a ZIP tool that strips file permission attributes, restore executable permissions before running:
+> ```bash
+> chmod +x Backend/mvnw
+> ```
 
 ---
 
@@ -23,17 +29,20 @@ The system features:
 ### Role-Based Access Control
 - `BUYER`: Browses published marketplace businesses, submits inquiries, exchanges messages with sellers, leaves reviews.
 - `SELLER`: Submits seller verification KYC, creates business listings with attachments, reviews buyer inquiries, negotiates via messages.
-- `VERIFICATION_OFFICER`: Audits seller KYC profiles and business verification documents, approves or requests more info.
+- `VERIFICATION_OFFICER`: Audits seller KYC profiles and business verification documents, approves verification or requests more info. Officer approval marks listings as verified, leaving them pending administrator publication approval.
 - `ADMIN`: Publishes verified listings, manages categories and staff, assigns and escalates support tickets, oversees platform audit logs.
 - `SUPPORT_AGENT`: Responds to user helpdesk support tickets.
 
 ### Security Enforcements
 - **Verification Ownership**: Only listing owners or platform administrators can submit listings for verification audit.
+- **Two-Phase Publication Lifecycle**: Officer verification approves business legitimacy; administrator publication approval is strictly required before any listing becomes visible on the public marketplace.
+- **Re-Review State Safeguards**: When a published listing legitimately enters re-review (e.g. officer requests more information or rejects), public visibility is immediately revoked and publication metadata is cleared. Any subsequent officer approval requires a fresh administrator publication review before the listing can go live again.
 - **Explicit Identifier Routing**: Separate, unambiguous contracts for business IDs vs. verification request IDs.
-- **Confidential Document Protection**: Private financial reports, ownership deeds, and unapproved listings require authenticated bearer token access with owner/officer/admin authorization.
+- **Confidential Document Protection**: Private financial reports, ownership deeds, and unapproved listings require authenticated bearer token access with owner/officer/admin authorization. Anonymous and unrelated buyer access is strictly forbidden (HTTP 401/403).
 - **Atomic OTP Lockout**: Failed verification attempts increment and commit immediately (`Propagation.REQUIRES_NEW`), preventing brute-force bypass across transactional rollbacks.
 - **Session Revocation**: Password changes and resets increment `tokenVersion`, instantly invalidating previously issued JWT tokens.
-- **Inquiry Integrity**: Only published & verified businesses accept inquiries; duplicate concurrent inquiries are prevented via atomic database constraints while permitting new inquiries after closure.
+- **Inquiry Integrity**: Only published & verified businesses accept inquiries; duplicate concurrent open inquiries are prevented via atomic database constraints while permitting new inquiries after closure.
+- **Isolated Test Mailbox Protection**: Test mailbox endpoints (`/api/test/mailbox/**`) are strictly guarded by `@Profile({"dev", "local", "test"})` and `@ConditionalOnProperty(name = "app.test-mailbox.enabled", havingValue = "true")`. They are completely disabled by default in production.
 
 ---
 
@@ -77,18 +86,20 @@ app.admin.email=admin@bizexchange.local
 app.admin.password=YourStrongAdminPassword123!
 ```
 
-Run Flyway migrations and start the backend (explicitly activating the `local` profile to load `application-local.properties`):
+> **Note on Test Mailbox for E2E Automation**:
+> If running automated end-to-end tests or browser verification scripts locally, enable the test mailbox property in `application-local.properties`:
+> ```properties
+> app.test-mailbox.enabled=true
+> ```
+> Keep this property `false` (the default) in production environments.
+
+Start the backend activating the `local` profile:
 ```bash
-# On Windows (PowerShell / Command Prompt):
+# On Windows (PowerShell):
 .\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local
 
-# On Linux/macOS:
+# On Linux / macOS:
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
-
-# Alternatively, set the environment variable:
-# Windows PowerShell: $env:SPRING_PROFILES_ACTIVE="local"; .\mvnw.cmd spring-boot:run
-# Windows CMD:        set SPRING_PROFILES_ACTIVE=local && mvnw.cmd spring-boot:run
-# Linux/macOS:        SPRING_PROFILES_ACTIVE=local ./mvnw spring-boot:run
 ```
 
 The backend server starts on `http://localhost:8080`.
@@ -121,13 +132,36 @@ The frontend application starts on `http://localhost:3000`.
 
 ## Building and Testing
 
-### Backend Tests
-All tests run against an isolated in-memory H2 database with zero mutations to production:
+### Backend Unit & Standard Integration Tests (In-Memory H2)
+Standard backend service and controller tests execute against an isolated in-memory H2 database without requiring PostgreSQL:
 ```bash
 cd Backend
-mvn test
+# Windows
+.\mvnw.cmd test
+
+# Linux / macOS
+./mvnw test
 ```
-*Current test suite: 48 automated regression & integration tests passing cleanly.*
+
+### PostgreSQL Migration & Schema Tests (Live PostgreSQL Environment)
+Integration test `PostgreSqlFlywayMigrationIntegrationTest` verifies Flyway migrations and data preservation against a real PostgreSQL instance:
+```bash
+# Windows
+.\mvnw.cmd test -Dtest=PostgreSqlFlywayMigrationIntegrationTest
+
+# Linux / macOS
+./mvnw test -Dtest=PostgreSqlFlywayMigrationIntegrationTest
+```
+
+> **PostgreSQL Test Databases Notice**:
+> These migration tests dynamically create and drop isolated test databases on PostgreSQL:
+> - `bizexchange_fresh_test`: Fresh migration lifecycle from V1 through V9.
+> - `bizexchange_inquiry_test`: Inquiry constraint and duplicate prevention tests.
+> - `bizexchange_upgrade_test`: Representative V8 to V9 upgrade compatibility with Flyway validation retained.
+> - `bizexchange_prev5_test`: Pre-V5 data preservation regression testing duplicate open inquiries and messages.
+> - `bizexchange_hist_test`: Historical V5 deduplication verification.
+>
+> Run these tests in an isolated development/test PostgreSQL instance where the test user has permissions to create and drop databases. The primary `BizExchange` application database is never modified by these automated tests.
 
 ### Frontend Checks & Production Build
 ```bash
@@ -139,50 +173,58 @@ npm run lint
 # Run Next.js production build:
 npm run build
 ```
-*Builds 39 static and dynamic routes successfully.*
 
 ---
 
 ## Database Migrations
 
-Migrations are automatically executed by Flyway on startup (`Backend/src/main/resources/db/migration`):
+Database migrations are located in `Backend/src/main/resources/db/migration` and executed automatically by Flyway on startup:
+
 - `V1__Initial_Schema.sql`: Complete DDL schema creation with tables, enums, and foreign keys.
-- `V2__Add_Performance_Indexes.sql`: Performance indexes on foreign keys and search filters.
-- `V3__Performance_And_Composite_Indexes.sql`: Composite search and status indexes.
-- `V4__Add_Security_And_Performance_Indexes_And_Constraints.sql`: Optimistic locking versions and audit logging tables.
-- `V5__Add_Token_Version_And_Inquiry_Unique_Index.sql`: Token version for session revocation and partial unique index on open inquiries.
-- `V6__Reconcile_Email_Verification_Tokens_Schema.sql`: Reconciles `email_verification_tokens` timestamps and `reviews.updated_at`.
-- `V7__Make_Review_Deal_Id_Nullable.sql`: Makes legacy `deal_id` on `reviews` nullable.
-- `V8__Drop_Legacy_Not_Null_Constraints_On_Reviews.sql`: Drops NOT NULL constraints on legacy columns on `reviews` to support seller reviews.
+- `V2__Add_Password_Change_Otp_Table.sql`: Table for password change verification OTPs.
+- `V3__Add_Password_Reset_Otp_Table.sql`: Table for password reset tokens.
+- `V4__Add_Security_And_Performance_Indexes_And_Constraints.sql`: Performance indexes, audit log table, and optimistic locking versions.
+- `V5__Add_Token_Version_And_Inquiry_Unique_Index.sql`: Token version for session revocation and partial unique index on open inquiries (`buyer_id`, `business_id`).
+- `V6__Reconcile_Email_Verification_Tokens_Schema.sql`: Reconciles `email_verification_tokens` table columns and constraints.
+- `V7__Make_Review_Deal_Id_Nullable.sql`: Makes legacy `deal_id` on `reviews` nullable to permit seller reviews without closed deals.
+- `V8__Drop_Legacy_Not_Null_Constraints_On_Reviews.sql`: Drops legacy NOT NULL constraints on `transaction_value` and `verified_purchase` on `reviews`.
+- `V9__Restore_And_Scope_Review_Constraints.sql`: Restores and scopes integrity constraints on reviews (rating 1..5 check constraint, foreign keys, and valid associations).
+
+For instructions on safely upgrading legacy databases running schema version V4 or earlier without data loss, see [UPGRADE_PRE_V5.md](UPGRADE_PRE_V5.md).
 
 ---
 
-## End-to-End Workflow Verification
+## End-to-End & Browser Verification
 
-A comprehensive, reusable end-to-end verification script is located at `scripts/verify_e2e_workflow.mjs`.
-
-### What It Verifies
-1. **Admin Authentication & Categories**: Validates JWT login and ensures business categories exist.
-2. **Staff Provisioning**: Provisions and authenticates a Verification Officer.
-3. **Seller Flow**: Registers seller, auto-verifies email, verifies seller identity via Officer.
-4. **Listing Creation & Validation**: Creates listings and enforces input constraints.
-5. **Upload Robustness**: Asserts rejection of disallowed files without creating duplicate listings.
-6. **Distinct Document & Photo Uploads**: Uploads PDF documents and image photos, confirming distinct IDs, proper MIME types (`application/pdf`, `image/png`), and verifying downloaded binary byte integrity.
-7. **Listing Edit & Optional-Field Clearing**: Tests field updates and explicit clearing of optional attributes (such as `reasonForSelling`) while preserving other fields.
-8. **Officer Review**: Officer previews, downloads files, and marks listing verified.
-9. **Admin Publication**: Admin publishes listing to public marketplace.
-10. **Buyer Inquiry & Reviews**: Buyer registers, submits inquiry, seller accepts, and buyer rates seller.
-
-### Running the E2E Script
-Ensure both PostgreSQL and the Spring Boot backend (`http://localhost:8080`) are running:
-
+### 1. API End-to-End Workflow Verification
+Located at `scripts/verify_e2e_workflow.mjs`:
 ```bash
-# With default local credentials:
-node scripts/verify_e2e_workflow.mjs
-
-# Or with custom environment variables:
-BASE_URL="http://localhost:8080/api" \
-ADMIN_EMAIL="admin@bizexchange.local" \
-ADMIN_PASSWORD="YourAdminPassword123!" \
 node scripts/verify_e2e_workflow.mjs
 ```
+Verifies full platform API workflows: admin setup, officer KYC verification, seller listing creation, file uploads, inquiry negotiations, and seller ratings.
+
+### 2. Browser Verification Flows (Puppeteer)
+Located at `scripts/verify_browser_flows.mjs`:
+```bash
+node scripts/verify_browser_flows.mjs
+```
+
+**Browser Test Environment & Dependencies**:
+- Requires Chromium/Chrome. By default, it auto-detects system Chrome or can be configured via environment variables:
+  ```bash
+  CHROME_PATH="C:\Program Files\Google\Chrome\Application\chrome.exe"
+  # or
+  PUPPETEER_EXECUTABLE_PATH="/usr/bin/google-chrome"
+  ```
+- Environment variables:
+  - `FRONTEND_URL` (default: `http://localhost:3000`)
+  - `BACKEND_URL` (default: `http://localhost:8080/api`)
+  - `ADMIN_EMAIL` (default: `admin@bizexchange.local`)
+  - `ADMIN_PASSWORD` (default: `YourStrongAdminPassword123!`)
+- Automatic fixture cleanup: All temporary upload files and browser contexts are isolated and cleaned up automatically upon test completion.
+- Verifies:
+  - Flow E: Email verification in browser, invalid token rejection, real mailbox token verification, token reuse rejection.
+  - Flow A: Listing creation, forced file upload failure (HTTP 500), UI error display, and retry control.
+  - Flow B: Persisted business updates and optional field clearing across page reloads.
+  - Flow C: Officer private document inspection in a real browser tab with a valid PDF fixture, strict denial of anonymous and unrelated buyer access, and officer verification approval.
+  - Flow D: Admin publication approval and anonymous marketplace visibility.

@@ -147,10 +147,48 @@ async function run() {
   await apiPut(`/admin/sellers/${sellerProfile.id}/approve`, null, officerToken);
   console.log(`  ✓ Verified seller provisioned: ${sellerEmail}`);
 
-  // Create sample PDF file for upload tests
+  function generateValidPdf(text) {
+    const stream = `BT /F1 12 Tf 50 700 Td (${text}) Tj ET`;
+    const streamLen = Buffer.byteLength(stream, "utf8");
+    return `%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length ${streamLen} >>
+stream
+${stream}
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000244 00000 n 
+0000000330 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+407
+%%EOF
+`;
+  }
+
+  // Create sample valid PDF file for upload tests
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "biz_browser_test_"));
   const samplePdfPath = path.join(tempDir, "audit_sample.pdf");
-  const samplePdfContent = `%PDF-1.4 sample audit document content timestamp=${ts}`;
+  const samplePdfContent = generateValidPdf(`sample audit document content timestamp=${ts}`);
   fs.writeFileSync(samplePdfPath, samplePdfContent, "utf-8");
 
   // Launch browser
@@ -560,9 +598,8 @@ async function run() {
     await page.goto(`${FRONTEND_URL}/verification-officer/review/${createdBusinessId}`, { waitUntil: "networkidle2" });
     await page.waitForSelector("h1, h2");
 
-    // Stub window.open to prevent popup tabs from stealing focus
+    // Do NOT stub window.open: test real document window/tab opening
     await page.evaluate(() => {
-      window.open = () => null;
       window.confirm = () => true;
       window.alert = () => {};
     });
@@ -573,55 +610,64 @@ async function run() {
       { timeout: 8000 }
     );
 
-    // Set up response listener to capture the document request
-    const documentResponsePromise = new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error("Timeout waiting for document response")), 10000);
-      page.on("response", async (res) => {
-        if (res.url().includes(`/verification/files/${docFile.id}`) && res.request().method() === "GET") {
-          clearTimeout(timer);
-          resolve(res);
-        }
-      });
-    });
-
-    // Click the actual Inspect File button
+    // Click the actual Inspect File button and verify a real document tab opens
     const inspectBtn = await page.evaluateHandle(() => {
       const btns = Array.from(document.querySelectorAll("button"));
       return btns.find((b) => b.innerText.includes("Inspect File")) || null;
     });
     assert.ok(inspectBtn.asElement(), "Inspect File button must exist for uploaded document");
+
+    console.log("  -> Clicking Inspect File button to verify a real document tab opens...");
+    const newTargetPromise = browser.waitForTarget((target) => target.opener() === page.target());
     await inspectBtn.asElement().click();
+    const newTarget = await newTargetPromise;
+    const docPage = await newTarget.page();
+    assert.ok(docPage, "A real document tab/window must open upon clicking Inspect File");
 
-    // Assert that the document request succeeds and returns expected content
-    const docRes = await documentResponsePromise;
-    assert.equal(docRes.status(), 200, "Document fetch must return HTTP 200 OK");
-    const headers = docRes.headers();
-    const ct = headers["content-type"] || headers["Content-Type"] || "";
+    // Wait until document tab has navigated to blob: URL
+    await docPage.waitForFunction(() => window.location.href.startsWith("blob:"), { timeout: 10000 });
+    const openedDocUrl = docPage.url();
     assert.ok(
-      ct.includes("application/pdf"),
-      `Expected application/pdf Content-Type, got ${ct}`
+      openedDocUrl.startsWith("blob:"),
+      `Document tab must navigate to blob: URL (Got: ${openedDocUrl})`
     );
 
-    // Verify document content matches uploaded file
-    const officerFileText = await page.evaluate(async (fileUrl) => {
-      const token = localStorage.getItem("token");
-      const res = await fetch(fileUrl, { headers: { Authorization: `Bearer ${token}` } });
-      return await res.text();
-    }, `${BACKEND_URL}/verification/files/${docFile.id}`);
-
+    // Verify document content rendered in real tab matches uploaded content
+    const realTabContent = await docPage.evaluate(async () => {
+      const resp = await fetch(window.location.href);
+      return await resp.text();
+    });
     assert.ok(
-      officerFileText.includes("sample audit document"),
-      "Downloaded document bytes must contain uploaded content"
+      realTabContent.includes("sample audit document"),
+      "Document content inside opened tab must match uploaded valid PDF fixture"
     );
-    console.log("  ✓ Officer accessed private document through UI; byte content verified.");
+    console.log("  ✓ Real document tab opened visibly with matching fixture content.");
 
-    // Assert unauthorized users cannot access it
-    const unauthorizedFetch = await fetch(`${BACKEND_URL}/verification/files/${docFile.id}`);
+    // Close the document tab
+    await docPage.close();
+
+    // Assert anonymous access is denied (401 or 403)
+    const anonymousFetch = await fetch(`${BACKEND_URL}/verification/files/${docFile.id}`);
     assert.ok(
-      unauthorizedFetch.status === 401 || unauthorizedFetch.status === 403,
-      `Unauthorized request to private document must return 401/403 (Got: ${unauthorizedFetch.status})`
+      anonymousFetch.status === 401 || anonymousFetch.status === 403,
+      `Anonymous request to private document must return 401 or 403 (Got: ${anonymousFetch.status})`
     );
-    console.log("  ✓ Unauthorized access to private document strictly rejected.");
+    console.log("  ✓ Anonymous access to private document strictly denied.");
+
+    // Log in as an unrelated buyer and verify private-document access is denied (403)
+    const buyerLoginRes = await apiPost("/auth/login", { email: unverifiedEmail, password: unverifiedPass });
+    assert.ok(buyerLoginRes.ok, "Unrelated buyer login failed");
+    const unrelatedBuyerToken = buyerLoginRes.data.data.token;
+
+    const unrelatedBuyerFetch = await fetch(`${BACKEND_URL}/verification/files/${docFile.id}`, {
+      headers: { Authorization: `Bearer ${unrelatedBuyerToken}` },
+    });
+    assert.equal(
+      unrelatedBuyerFetch.status,
+      403,
+      `Unrelated buyer access to private document must return 403 Forbidden (Got: ${unrelatedBuyerFetch.status})`
+    );
+    console.log("  ✓ Unrelated buyer access to private document strictly denied (403 Forbidden).");
 
     // Officer approves verification
     await page.evaluate(() => {
@@ -630,9 +676,9 @@ async function run() {
     });
     const approveVerifBtn = await page.evaluateHandle(() => {
       const btns = Array.from(document.querySelectorAll("button"));
-      return btns.find((b) => b.innerText.includes("Approve & Publish")) || null;
+      return btns.find((b) => b.innerText.includes("Approve Verification")) || null;
     });
-    assert.ok(approveVerifBtn.asElement(), "Officer approve button must exist");
+    assert.ok(approveVerifBtn.asElement(), "Officer 'Approve Verification' button must exist");
     await approveVerifBtn.asElement().click();
 
     await page.waitForFunction(
