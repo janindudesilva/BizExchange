@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { apiRequest } from "@/lib/api";
+import { Offer } from "@/types/offer";
+import { Deal } from "@/types/deal";
 
 /* ── Types ── */
 interface UserProfile {
@@ -34,18 +36,14 @@ interface SavedBusiness {
   savedAt: string;
 }
 
-interface Ticket {
-  id: number;
-  subject: string;
-  status: string;
-  createdAt: string;
-}
-
 /* ── Sidebar nav ── */
 const NAV_ITEMS: { label: string; href?: string; icon: string }[] = [
   { label: "Overview", href: "/buyer/dashboard", icon: "grid" },
   { label: "Browse Businesses", href: "/businesses", icon: "search" },
   { label: "My Inquiries", href: "/businesses/my-inquiries", icon: "inbox" },
+  { label: "My Offers", href: "/buyer/offers", icon: "tag" },
+  { label: "My Deals", href: "/buyer/deals", icon: "briefcase" },
+  { label: "Compliance Reports", href: "/buyer/reports", icon: "shield" },
   { label: "Favorites", href: "/favorites", icon: "heart" },
   { label: "Support Tickets", href: "/support/my-tickets", icon: "help" },
 ];
@@ -139,6 +137,25 @@ function NavIcon({ type }: { type: string }) {
           <line x1="12" y1="17" x2="12.01" y2="17" />
         </svg>
       );
+    case "tag":
+      return (
+        <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+          <path d="M7 7h.01M7 3h5a2 2 0 011.414.586l7 7a2 2 0 010 2.828l-5 5a2 2 0 01-2.828 0l-7-7A2 2 0 013 10V5a2 2 0 012-2z" />
+        </svg>
+      );
+    case "briefcase":
+      return (
+        <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+          <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+          <path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" />
+        </svg>
+      );
+    case "shield":
+      return (
+        <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -172,6 +189,18 @@ function StatIcon({ type }: { type: string }) {
           <path d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
         </svg>
       );
+    case "offers":
+      return (
+        <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+          <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+    case "deals":
+      return (
+        <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+          <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -181,8 +210,9 @@ function StatIcon({ type }: { type: string }) {
 export default function BuyerDashboardPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [deals, setDeals] = useState<Deal[]>([]);
   const [savedBusinesses, setSavedBusinesses] = useState<SavedBusiness[]>([]);
-  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loaded, setLoaded] = useState(() => typeof window !== "undefined" && !localStorage.getItem("token"));
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -217,9 +247,10 @@ export default function BuyerDashboardPage() {
     Promise.allSettled([
       apiRequest<{ data: UserProfile }>("/users/me"),
       apiRequest<{ data: Inquiry[] }>("/inquiries/sent"),
+      apiRequest<{ data: Offer[] }>("/offers/sent"),
+      apiRequest<{ data: Deal[] }>("/deals/my"),
       apiRequest<{ data: SavedBusiness[] }>("/favorites"),
-      apiRequest<{ data: Ticket[] }>("/tickets/my"),
-    ]).then(([profileRes, inquiriesRes, favoritesRes, ticketsRes]) => {
+    ]).then(([profileRes, inquiriesRes, offersRes, dealsRes, favoritesRes]) => {
       if (ignore) return;
       if (profileRes.status === "fulfilled") {
         setProfile(profileRes.value.data ?? (profileRes.value as unknown as UserProfile));
@@ -227,12 +258,16 @@ export default function BuyerDashboardPage() {
       if (inquiriesRes.status === "fulfilled") {
         setInquiries(inquiriesRes.value.data ?? []);
       }
+      if (offersRes.status === "fulfilled") {
+        setOffers(offersRes.value.data ?? []);
+      }
+      if (dealsRes.status === "fulfilled") {
+        setDeals(dealsRes.value.data ?? []);
+      }
       if (favoritesRes.status === "fulfilled") {
         setSavedBusinesses(favoritesRes.value.data ?? []);
       }
-      if (ticketsRes.status === "fulfilled") {
-        setTickets(ticketsRes.value.data ?? []);
-      }
+
       setLoaded(true);
     });
 
@@ -243,11 +278,9 @@ export default function BuyerDashboardPage() {
 
   /* Computed stats */
   const totalInquiries = inquiries.length;
-  const activeInquiries = inquiries.filter(
-    (i) => i.status?.toUpperCase() === "ACTIVE" || i.status?.toUpperCase() === "APPROVED"
-  ).length;
+  const pendingOffers = offers.filter((o) => o.status === "PENDING").length;
+  const activeDeals = deals.filter((d) => d.status === "IN_PROGRESS").length;
   const totalSaved = savedBusinesses.length;
-  const totalTickets = tickets.length;
 
   const recentInquiries = [...inquiries]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -259,32 +292,36 @@ export default function BuyerDashboardPage() {
 
   const STAT_CARDS = [
     {
+      label: "ACTIVE DEALS",
+      value: activeDeals,
+      icon: "deals",
+      color: "#00cfa8",
+      bgTint: "rgba(0,207,168,0.08)",
+      href: "/buyer/deals",
+    },
+    {
+      label: "PENDING OFFERS",
+      value: pendingOffers,
+      icon: "offers",
+      color: "#f5a623",
+      bgTint: "rgba(245,166,35,0.08)",
+      href: "/buyer/offers",
+    },
+    {
       label: "TOTAL INQUIRIES",
       value: totalInquiries,
       icon: "inquiries",
       color: "#6366f1",
       bgTint: "rgba(99,102,241,0.08)",
-    },
-    {
-      label: "ACTIVE CONVERSATIONS",
-      value: activeInquiries,
-      icon: "active",
-      color: "#00cfa8",
-      bgTint: "rgba(0,207,168,0.08)",
+      href: "/businesses/my-inquiries",
     },
     {
       label: "SAVED BUSINESSES",
       value: totalSaved,
       icon: "saved",
-      color: "#f5a623",
-      bgTint: "rgba(245,166,35,0.08)",
-    },
-    {
-      label: "SUPPORT TICKETS",
-      value: totalTickets,
-      icon: "tickets",
       color: "#ec4899",
       bgTint: "rgba(236,72,153,0.08)",
+      href: "/favorites",
     },
   ];
 
@@ -465,9 +502,10 @@ export default function BuyerDashboardPage() {
               {/* ── Stat Cards ── */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
                 {STAT_CARDS.map((card) => (
-                  <div
+                  <Link
                     key={card.label}
-                    className="bg-[#121c32] border border-white/5 rounded-2xl p-5 hover:border-white/10 transition-all duration-300 group"
+                    href={card.href || "#"}
+                    className="bg-[#121c32] border border-white/5 rounded-2xl p-5 hover:border-white/10 transition-all duration-300 group block"
                   >
                     <div className="flex items-center justify-between">
                       <div className="text-[11px] tracking-[0.1em] text-[#4f6380]">
@@ -486,7 +524,7 @@ export default function BuyerDashboardPage() {
                     >
                       {loaded ? card.value : "—"}
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
 

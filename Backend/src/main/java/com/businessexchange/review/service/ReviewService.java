@@ -1,9 +1,10 @@
 package com.businessexchange.review.service;
 
+import com.businessexchange.common.exception.DuplicateResourceException;
 import com.businessexchange.common.exception.ResourceNotFoundException;
-import com.businessexchange.inquiry.entity.Inquiry;
-import com.businessexchange.inquiry.entity.InquiryStatus;
-import com.businessexchange.inquiry.repository.InquiryRepository;
+import com.businessexchange.deal.entity.Deal;
+import com.businessexchange.deal.entity.DealStatus;
+import com.businessexchange.deal.repository.DealRepository;
 import com.businessexchange.review.dto.ReviewCreateRequest;
 import com.businessexchange.review.dto.ReviewResponse;
 import com.businessexchange.review.entity.Review;
@@ -23,7 +24,7 @@ public class ReviewService {
 
     private final ReviewRepository reviewRepository;
     private final UserRepository userRepository;
-    private final InquiryRepository inquiryRepository;
+    private final DealRepository dealRepository;
 
     @Transactional
     public ReviewResponse createReview(String buyerEmail, Long sellerId, ReviewCreateRequest request) {
@@ -37,25 +38,31 @@ public class ReviewService {
         User seller = userRepository.findById(sellerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Seller not found"));
 
-        // Check if buyer has a closed inquiry with this seller
-        boolean hasClosedInquiry = inquiryRepository.findByBuyerIdAndSellerId(buyer.getId(), sellerId)
-                .stream()
-                .anyMatch(inquiry -> inquiry.getStatus() == InquiryStatus.CLOSED);
+        // New reviews require a COMPLETED deal belonging to the buyer and seller concerned.
+        // Closed inquiries no longer qualify.
+        boolean hasCompletedDeal = dealRepository.existsByBuyerIdAndSellerIdAndStatus(
+                buyer.getId(), sellerId, DealStatus.COMPLETED
+        );
 
-        if (!hasClosedInquiry) {
+        if (!hasCompletedDeal) {
             throw new AccessDeniedException(
-                    "You can only review sellers with whom you have a closed inquiry"
+                    "You can only review sellers with whom you have a completed deal"
             );
         }
 
-        // Check if review already exists
+        // Reconcile and enforce one-review-per-buyer/seller rule explicitly
         if (reviewRepository.existsByBuyerIdAndSellerId(buyer.getId(), sellerId)) {
-            throw new com.businessexchange.common.exception.DuplicateResourceException("You have already reviewed this seller");
+            throw new DuplicateResourceException("You have already reviewed this seller");
         }
+
+        Deal completedDeal = dealRepository.findFirstByBuyerIdAndSellerIdAndStatusOrderByClosedAtDesc(
+                buyer.getId(), sellerId, DealStatus.COMPLETED
+        ).orElse(null);
 
         Review review = Review.builder()
                 .seller(seller)
                 .buyer(buyer)
+                .deal(completedDeal)
                 .rating(request.getRating())
                 .comment(request.getComment())
                 .build();
@@ -99,6 +106,7 @@ public class ReviewService {
                 .sellerName(review.getSeller().getFullName())
                 .buyerId(review.getBuyer().getId())
                 .buyerName(review.getBuyer().getFullName())
+                .dealId(review.getDeal() != null ? review.getDeal().getId() : null)
                 .rating(review.getRating())
                 .comment(review.getComment())
                 .createdAt(review.getCreatedAt().toString())

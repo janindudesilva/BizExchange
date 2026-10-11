@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { apiRequest, apiUpload, openAuthenticatedFile } from "@/lib/api";
-import { validateUploadFile, formatFileSize } from "@/lib/fileValidation";
+import { validateUploadFile } from "@/lib/fileValidation";
 import SellerSidebar from "@/components/SellerSidebar";
 
 function initials(name: string | undefined): string {

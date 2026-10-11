@@ -58,7 +58,7 @@ class AuthorizationAndIdentityRegressionTest {
     @Mock
     private ReviewRepository reviewRepository;
     @Mock
-    private InquiryRepository inquiryRepository;
+    private com.businessexchange.deal.repository.DealRepository dealRepository;
 
     @InjectMocks
     private ReviewService reviewService;
@@ -158,12 +158,12 @@ class AuthorizationAndIdentityRegressionTest {
     }
 
     @Test
-    @DisplayName("ATTACK: Buyer attempting review without a closed inquiry must be rejected")
+    @DisplayName("ATTACK: Buyer attempting review without a completed deal must be rejected")
     void testReviewWithoutClosedInquiryRejected() {
         when(userRepository.findByEmail(normalUser.getEmail())).thenReturn(Optional.of(normalUser));
         when(userRepository.findById(sellerUser.getId())).thenReturn(Optional.of(sellerUser));
-        when(inquiryRepository.findByBuyerIdAndSellerId(normalUser.getId(), sellerUser.getId()))
-                .thenReturn(List.of()); // No closed inquiries
+        when(dealRepository.existsByBuyerIdAndSellerIdAndStatus(normalUser.getId(), sellerUser.getId(), com.businessexchange.deal.entity.DealStatus.COMPLETED))
+                .thenReturn(false); // No completed deal
 
         ReviewCreateRequest request = new ReviewCreateRequest();
         request.setRating(4);
@@ -173,7 +173,7 @@ class AuthorizationAndIdentityRegressionTest {
                 reviewService.createReview(normalUser.getEmail(), sellerUser.getId(), request)
         );
 
-        assertTrue(ex.getMessage().contains("only review sellers with whom you have a closed inquiry"));
+        assertTrue(ex.getMessage().contains("only review sellers with whom you have a completed deal"));
         verify(reviewRepository, never()).save(any());
     }
 
@@ -183,12 +183,8 @@ class AuthorizationAndIdentityRegressionTest {
         when(userRepository.findByEmail(normalUser.getEmail())).thenReturn(Optional.of(normalUser));
         when(userRepository.findById(sellerUser.getId())).thenReturn(Optional.of(sellerUser));
 
-        Inquiry closedInquiry = Inquiry.builder()
-                .id(1L)
-                .status(InquiryStatus.CLOSED)
-                .build();
-        when(inquiryRepository.findByBuyerIdAndSellerId(normalUser.getId(), sellerUser.getId()))
-                .thenReturn(List.of(closedInquiry));
+        when(dealRepository.existsByBuyerIdAndSellerIdAndStatus(normalUser.getId(), sellerUser.getId(), com.businessexchange.deal.entity.DealStatus.COMPLETED))
+                .thenReturn(true);
 
         when(reviewRepository.existsByBuyerIdAndSellerId(normalUser.getId(), sellerUser.getId()))
                 .thenReturn(true);

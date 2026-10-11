@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 }, indexes = {
         @Index(name = "idx_reviews_seller_id", columnList = "seller_id"),
         @Index(name = "idx_reviews_buyer_id", columnList = "buyer_id"),
+        @Index(name = "idx_reviews_deal_id", columnList = "deal_id"),
         @Index(name = "idx_reviews_created_at", columnList = "created_at DESC")
 })
 @Getter
@@ -25,13 +26,17 @@ public class Review {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "seller_id", nullable = false)
     private User seller;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "buyer_id", nullable = false)
     private User buyer;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "deal_id")
+    private com.businessexchange.deal.entity.Deal deal;
 
     @Column(nullable = false)
     private Integer rating;

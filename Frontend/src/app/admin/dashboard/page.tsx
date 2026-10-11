@@ -204,7 +204,7 @@ export default function AdminDashboardPage() {
           {/* Additional Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8">
             <StatCard title="ACTIVE INQUIRIES" value={analytics.activeInquiries} subtitle="Ongoing conversations" color="text-[#10b981]" />
-            <StatCard title="CLOSED INQUIRIES" value={analytics.closedInquiries} subtitle="Completed deals" color="text-[#4f6380]" />
+            <StatCard title="CLOSED INQUIRIES" value={analytics.closedInquiries} subtitle="Archived conversations" color="text-[#4f6380]" />
             <StatCard title="TOTAL MESSAGES" value={analytics.totalMessages} subtitle="Messages sent" color="text-[#3b82f6]" />
           </div>
 
@@ -230,19 +230,61 @@ export default function AdminDashboardPage() {
       {/* Action Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
         <div className="glass-panel card-lift p-6 rounded-2xl border border-white/[0.07]">
+          <div className="text-[11px] tracking-[0.1em] text-[#00cfa8] mb-3">OFFERS DESK</div>
+          <h2 className="text-lg font-semibold mb-2 text-[#d8e4f0]">Acquisition Offers</h2>
+          <p className="text-[#8092ab] text-sm mb-5">
+            Monitor, inspect, and filter all acquisition proposals across the platform.
+          </p>
+          <button
+            onClick={() => router.push("/admin/offers")}
+            className="btn-primary !py-2 !px-4 !text-sm !rounded-lg"
+          >
+            Manage Offers
+          </button>
+        </div>
+
+        <div className="glass-panel card-lift p-6 rounded-2xl border border-white/[0.07]">
+          <div className="text-[11px] tracking-[0.1em] text-[#00cfa8] mb-3">DEALS AUDIT</div>
+          <h2 className="text-lg font-semibold mb-2 text-[#d8e4f0]">Platform Deals</h2>
+          <p className="text-[#8092ab] text-sm mb-5">
+            Audit mutual completion confirmations and execute administrative cancellations.
+          </p>
+          <button
+            onClick={() => router.push("/admin/deals")}
+            className="btn-primary !py-2 !px-4 !text-sm !rounded-lg"
+          >
+            Audit Deals
+          </button>
+        </div>
+
+        <div className="glass-panel card-lift p-6 rounded-2xl border border-white/[0.07]">
+          <div className="text-[11px] tracking-[0.1em] text-rose-400 mb-3">COMPLIANCE QUEUE</div>
+          <h2 className="text-lg font-semibold mb-2 text-[#d8e4f0]">Buyer Reports</h2>
+          <p className="text-[#8092ab] text-sm mb-5">
+            Audit buyer-submitted fraud, misleading listings, and suspicious seller reports.
+          </p>
+          <button
+            onClick={() => router.push("/admin/reports")}
+            className="btn-primary !py-2 !px-4 !text-sm !rounded-lg"
+          >
+            Review Reports
+          </button>
+        </div>
+
+        <div className="glass-panel card-lift p-6 rounded-2xl border border-white/[0.07]">
           <div className="text-[11px] tracking-[0.1em] text-[#4f6380] mb-3">BUSINESS APPROVALS</div>
           <h2 className="text-lg font-semibold mb-2 text-[#d8e4f0]">Business Approvals</h2>
           <p className="text-[#8092ab] text-sm mb-5">
             Approve or reject seller business listings.
           </p>
-            <button
-              onClick={() => {
-                router.push("/admin/businesses/pending");
-              }}
-              className="btn-primary !py-2 !px-4 !text-sm !rounded-lg"
-              >
-              View Pending
-            </button>
+          <button
+            onClick={() => {
+              router.push("/admin/businesses/pending");
+            }}
+            className="bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors text-sm min-h-[40px] inline-flex items-center justify-center"
+          >
+            View Pending
+          </button>
         </div>
 
         <div className="glass-panel card-lift p-6 rounded-2xl border border-white/[0.07]">
