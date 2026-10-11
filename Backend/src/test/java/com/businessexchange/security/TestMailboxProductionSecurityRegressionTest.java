@@ -23,7 +23,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("prod")
 @TestPropertySource(properties = {
         "app.test-mailbox.enabled=false",
-        "jwt.secret=PRODUCTION_REGRESSION_TEST_SECRET_AT_LEAST_32_BYTES_LONG"
+        "jwt.secret=PRODUCTION_REGRESSION_TEST_SECRET_AT_LEAST_32_BYTES_LONG",
+        "app.frontend.url=https://bizexchange.local",
+        "cors.allowed-origins=https://bizexchange.local",
+        "spring.flyway.enabled=false",
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.datasource.url=jdbc:h2:mem:prodtestmailbox;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE",
+        "spring.datasource.driver-class-name=org.h2.Driver",
+        "spring.datasource.username=sa",
+        "spring.datasource.password="
 })
 public class TestMailboxProductionSecurityRegressionTest {
 

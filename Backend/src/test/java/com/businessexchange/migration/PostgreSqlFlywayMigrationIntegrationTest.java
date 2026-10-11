@@ -56,6 +56,23 @@ public class PostgreSqlFlywayMigrationIntegrationTest {
 
     @BeforeAll
     static void checkPostgreSqlAvailability() {
+        // Safety guard: ensure tests NEVER run against a production host or when PRODUCTION environment is active
+        String envActive = System.getenv("SPRING_PROFILES_ACTIVE");
+        String isProdEnv = System.getenv("PRODUCTION");
+        if ("true".equalsIgnoreCase(isProdEnv) || "prod".equalsIgnoreCase(envActive) || "production".equalsIgnoreCase(envActive)) {
+            System.out.println("PostgreSQL migration integration tests are disabled in production profiles to protect live database integrity.");
+            postgresAvailable = false;
+            return;
+        }
+
+        String host = PG_HOST.toLowerCase();
+        String hostWithoutPort = host.contains(":") ? host.substring(0, host.indexOf(":")) : host;
+        if (!hostWithoutPort.equals("localhost") && !hostWithoutPort.equals("127.0.0.1") && !hostWithoutPort.equals("postgres")) {
+            System.out.println("PostgreSQL migration integration tests can only run against localhost, 127.0.0.1, or disposable CI container ('postgres'). Target host: " + PG_HOST);
+            postgresAvailable = false;
+            return;
+        }
+
         try (Connection conn = DriverManager.getConnection("jdbc:postgresql://" + PG_HOST + "/postgres", PG_USER, PG_PASS)) {
             postgresAvailable = true;
             try (Statement stmt = conn.createStatement()) {

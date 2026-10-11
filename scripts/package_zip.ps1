@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $sourceDir = 'd:\bizexchange'
-$zipDestinations = @('d:\bizexchange\bizexchange26.zip', 'd:\bizexchange\bizexchange-reviewed.zip')
+$zipDestinations = @('d:\bizexchange\bizexchange27.zip', 'd:\bizexchange\bizexchange-reviewed.zip')
 
 $excludeSubstrings = @(
     '\.git\',
@@ -16,8 +16,10 @@ $excludeSubstrings = @(
 $excludeFileNames = @(
     'bizexchange25.zip',
     'bizexchange26.zip',
+    'bizexchange27.zip',
     'bizexchange-reviewed.zip',
     'bizexchange-reviewed-patch.zip',
+    'temp_storage_backup.sql',
     'application-local.properties',
     '.env',
     '.env.local',
@@ -74,7 +76,9 @@ try {
         Write-Host "Compressing staged files to $dest..."
         Compress-Archive -Path (Join-Path $stagingDir '*') -DestinationPath $dest -CompressionLevel Optimal
         $item = Get-Item $dest
+        $hash = (Get-FileHash -Path $dest -Algorithm SHA256).Hash
         Write-Host "ZIP created: $($item.FullName) ($([math]::Round($item.Length / 1MB, 2)) MB)"
+        Write-Host "SHA-256: $hash"
     }
 } finally {
     if (Test-Path $stagingDir) {
