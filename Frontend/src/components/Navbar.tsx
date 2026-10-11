@@ -259,6 +259,18 @@ export default function Navbar() {
                   Dashboard
                   {activeDot("/buyer/dashboard")}
                 </Link>
+                <Link href="/buyer/offers" className={navLinkClass("/buyer/offers")}>
+                  My Offers
+                  {activeDot("/buyer/offers")}
+                </Link>
+                <Link href="/buyer/deals" className={navLinkClass("/buyer/deals")}>
+                  My Deals
+                  {activeDot("/buyer/deals")}
+                </Link>
+                <Link href="/buyer/reports" className={navLinkClass("/buyer/reports")}>
+                  My Reports
+                  {activeDot("/buyer/reports")}
+                </Link>
                 <Link href="/businesses/my-inquiries" className={navLinkClass("/businesses/my-inquiries")}>
                   Inquiries
                   {activeDot("/businesses/my-inquiries")}
@@ -287,6 +299,18 @@ export default function Navbar() {
                 <Link href="/admin/dashboard" className={navLinkClass("/admin/dashboard")}>
                   Admin
                   {activeDot("/admin/dashboard")}
+                </Link>
+                <Link href="/admin/offers" className={navLinkClass("/admin/offers")}>
+                  Offers
+                  {activeDot("/admin/offers")}
+                </Link>
+                <Link href="/admin/deals" className={navLinkClass("/admin/deals")}>
+                  Deals
+                  {activeDot("/admin/deals")}
+                </Link>
+                <Link href="/admin/reports" className={navLinkClass("/admin/reports")}>
+                  Reports
+                  {activeDot("/admin/reports")}
                 </Link>
                 <Link href="/admin/sellers/pending" className={navLinkClass("/admin/sellers/pending")}>
                   Pending Sellers
@@ -471,6 +495,15 @@ export default function Navbar() {
               <Link href="/buyer/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium text-[#8493a8] hover:text-white hover:bg-white/5 touch-target">
                 Dashboard
               </Link>
+              <Link href="/buyer/offers" onClick={() => setMobileMenuOpen(false)} className="flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium text-[#8493a8] hover:text-white hover:bg-white/5 touch-target">
+                My Offers
+              </Link>
+              <Link href="/buyer/deals" onClick={() => setMobileMenuOpen(false)} className="flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium text-[#8493a8] hover:text-white hover:bg-white/5 touch-target">
+                My Deals
+              </Link>
+              <Link href="/buyer/reports" onClick={() => setMobileMenuOpen(false)} className="flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium text-[#8493a8] hover:text-white hover:bg-white/5 touch-target">
+                My Reports
+              </Link>
               <Link href="/businesses/my-inquiries" onClick={() => setMobileMenuOpen(false)} className="flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium text-[#8493a8] hover:text-white hover:bg-white/5 touch-target">
                 My Inquiries
               </Link>
@@ -489,6 +522,9 @@ export default function Navbar() {
           {token && role === "ADMIN" && (
             <>
               <Link href="/admin/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium text-[#8493a8] hover:text-white hover:bg-white/5 touch-target">Admin Dashboard</Link>
+              <Link href="/admin/offers" onClick={() => setMobileMenuOpen(false)} className="flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium text-[#8493a8] hover:text-white hover:bg-white/5 touch-target">Offers Desk</Link>
+              <Link href="/admin/deals" onClick={() => setMobileMenuOpen(false)} className="flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium text-[#8493a8] hover:text-white hover:bg-white/5 touch-target">Deals Audit</Link>
+              <Link href="/admin/reports" onClick={() => setMobileMenuOpen(false)} className="flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium text-[#8493a8] hover:text-white hover:bg-white/5 touch-target">Reports Queue</Link>
               <Link href="/admin/sellers/pending" onClick={() => setMobileMenuOpen(false)} className="flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium text-[#8493a8] hover:text-white hover:bg-white/5 touch-target">Pending Sellers</Link>
               <Link href="/admin/categories" onClick={() => setMobileMenuOpen(false)} className="flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium text-[#8493a8] hover:text-white hover:bg-white/5 touch-target">Manage Categories</Link>
             </>

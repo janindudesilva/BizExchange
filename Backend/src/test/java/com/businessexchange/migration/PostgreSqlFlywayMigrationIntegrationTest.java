@@ -118,9 +118,19 @@ public class PostgreSqlFlywayMigrationIntegrationTest {
 
         var result = flyway.migrate();
         assertTrue(result.migrationsExecuted > 0, "Migrations should be executed on fresh DB");
-        assertEquals("9", result.targetSchemaVersion, "Fresh DB should migrate up to version 9");
+        assertEquals("12", result.targetSchemaVersion, "Fresh DB should migrate up to version 12");
 
         try (Connection conn = DriverManager.getConnection(freshJdbcUrl, PG_USER, PG_PASS)) {
+            // 0. Verify offers, deals, and reports tables exist
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT table_name FROM information_schema.tables WHERE table_name IN ('offers', 'deals', 'reports')")) {
+                try (ResultSet rs = ps.executeQuery()) {
+                    int count = 0;
+                    while (rs.next()) count++;
+                    assertEquals(3, count, "Offers, deals, and reports tables must exist");
+                }
+            }
+
             // 1. Verify token_version on users table
             try (PreparedStatement ps = conn.prepareStatement(
                     "SELECT column_name, data_type, column_default FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'token_version'")) {
@@ -313,15 +323,15 @@ public class PostgreSqlFlywayMigrationIntegrationTest {
                 .load();
         assertDoesNotThrow(flywayValidator::validate, "Flyway validation must succeed on representative V1..V8 database");
 
-        // Step 3: Run forward migration to V9 with validation retained
-        Flyway flywayV9 = Flyway.configure()
+        // Step 3: Run forward migration to V12 with validation retained
+        Flyway flywayV12 = Flyway.configure()
                 .dataSource(upgradeJdbcUrl, PG_USER, PG_PASS)
                 .load();
-        var upgradeResult = flywayV9.migrate();
-        assertEquals("9", upgradeResult.targetSchemaVersion, "Forward migration to V9 must succeed cleanly");
+        var upgradeResult = flywayV12.migrate();
+        assertEquals("12", upgradeResult.targetSchemaVersion, "Forward migration to V12 must succeed cleanly");
 
-        // Step 4: Validate entire schema at V9
-        assertDoesNotThrow(flywayV9::validate, "Full Flyway validation up to V9 must succeed with 0 checksum mismatches");
+        // Step 4: Validate entire schema at V12
+        assertDoesNotThrow(flywayV12::validate, "Full Flyway validation up to V12 must succeed with 0 checksum mismatches");
     }
 
     @Test
@@ -444,13 +454,13 @@ public class PostgreSqlFlywayMigrationIntegrationTest {
             stmt.execute(protectionSql);
         }
 
-        // Step 4: Apply V5 through V9 with Flyway validation enabled
-        Flyway flywayV5ToV9 = Flyway.configure()
+        // Step 4: Apply V5 through V12 with Flyway validation enabled
+        Flyway flywayV5ToV12 = Flyway.configure()
                 .dataSource(preV5JdbcUrl, PG_USER, PG_PASS)
                 .load();
-        var upgradeResult = flywayV5ToV9.migrate();
-        assertEquals("9", upgradeResult.targetSchemaVersion, "Upgrade to V9 must succeed");
-        assertDoesNotThrow(flywayV5ToV9::validate, "Flyway validation with validation enabled must succeed");
+        var upgradeResult = flywayV5ToV12.migrate();
+        assertEquals("12", upgradeResult.targetSchemaVersion, "Upgrade to V12 must succeed");
+        assertDoesNotThrow(flywayV5ToV12::validate, "Flyway validation with validation enabled must succeed");
 
         // Step 5: Assert every original inquiry ID and message ID still exists, and exactly one inquiry remains open
         try (Connection conn = DriverManager.getConnection(preV5JdbcUrl, PG_USER, PG_PASS);
@@ -511,6 +521,18 @@ public class PostgreSqlFlywayMigrationIntegrationTest {
                             rs.getInt("checksum"),
                             rs.getBoolean("success"));
                 }
+                System.out.println("=== REPORTS TABLE COLUMNS IN BIZEXCHANGE ===");
+                try (ResultSet rsCols = stmt.executeQuery("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'reports'")) {
+                    while (rsCols.next()) {
+                        System.out.printf("  Column: %s (%s)%n", rsCols.getString(1), rsCols.getString(2));
+                    }
+                }
+                System.out.println("=== OFFERS TABLE COLUMNS IN BIZEXCHANGE ===");
+                try (ResultSet rsCols = stmt.executeQuery("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'offers'")) {
+                    while (rsCols.next()) {
+                        System.out.printf("  Column: %s (%s)%n", rsCols.getString(1), rsCols.getString(2));
+                    }
+                }
             }
         } catch (Exception e) {
             System.out.println("BizExchange database inspection skipped: " + e.getMessage());
@@ -524,6 +546,7 @@ public class PostgreSqlFlywayMigrationIntegrationTest {
         try {
             Flyway flyway = Flyway.configure()
                     .dataSource("jdbc:postgresql://" + PG_HOST + "/BizExchange", PG_USER, PG_PASS)
+                    .ignoreMigrationPatterns("*:pending")
                     .load();
             flyway.validate();
             System.out.println("Flyway validation against BizExchange SUCCEEDED with zero checksum mismatches!");

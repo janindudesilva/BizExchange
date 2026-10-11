@@ -13,5 +13,6 @@ public class ReviewResponse {
     private String buyerName;
     private Integer rating;
     private String comment;
+    private Long dealId;
     private String createdAt;
 }

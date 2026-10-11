@@ -25,6 +25,7 @@ interface SellerSidebarProps {
   profile?: SellerProfile | null;
   badges?: {
     inquiries?: number;
+    offers?: number;
     deals?: number;
     tickets?: number;
     notifications?: number;
@@ -59,10 +60,14 @@ export default function SellerSidebar({
   const router = useRouter();
   const [profile, setProfile] = useState<SellerProfile | null | undefined>(propProfile);
   const [fetchedInquiriesCount, setFetchedInquiriesCount] = useState(0);
+  const [fetchedOffersCount, setFetchedOffersCount] = useState(0);
+  const [fetchedDealsCount, setFetchedDealsCount] = useState(0);
   const [fetchedTicketsCount, setFetchedTicketsCount] = useState(0);
   const [fetchedNotifCount, setFetchedNotifCount] = useState(0);
 
   const inquiriesCount = propBadges?.inquiries ?? fetchedInquiriesCount;
+  const offersCount = propBadges?.offers ?? fetchedOffersCount;
+  const dealsCount = propBadges?.deals ?? fetchedDealsCount;
   const ticketsCount = propBadges?.tickets ?? fetchedTicketsCount;
   const [unreadNotifCountOverride, setUnreadNotifCountOverride] = useState<number | null>(null);
   const unreadNotifCount = unreadNotifCountOverride ?? (propBadges?.notifications ?? fetchedNotifCount);
@@ -72,11 +77,10 @@ export default function SellerSidebar({
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loadingNotifs, setLoadingNotifs] = useState(false);
 
+  const currentProfile = propProfile ?? profile;
+
   useEffect(() => {
-    if (propProfile) {
-      setProfile(propProfile);
-      return;
-    }
+    if (propProfile) return;
     let ignore = false;
     const userId = typeof window !== "undefined" ? localStorage.getItem("userId") : null;
     if (userId) {
@@ -101,6 +105,22 @@ export default function SellerSidebar({
         if (ignore) return;
         const inqs = res.data || [];
         setFetchedInquiriesCount(inqs.filter((i) => i.status === "PENDING_APPROVAL").length);
+      })
+      .catch(() => {});
+
+    apiRequest<{ data: { status: string }[] }>("/offers/received")
+      .then((res) => {
+        if (ignore) return;
+        const offs = res.data || [];
+        setFetchedOffersCount(offs.filter((o) => o.status === "PENDING").length);
+      })
+      .catch(() => {});
+
+    apiRequest<{ data: { status: string }[] }>("/deals/my")
+      .then((res) => {
+        if (ignore) return;
+        const dls = res.data || [];
+        setFetchedDealsCount(dls.filter((d) => d.status === "IN_PROGRESS").length);
       })
       .catch(() => {});
 
@@ -191,6 +211,18 @@ export default function SellerSidebar({
       href: "/seller/inquiries",
       badge: inquiriesCount > 0 ? inquiriesCount : undefined,
       isActive: pathname === "/seller/inquiries",
+    },
+    {
+      label: "Received Offers",
+      href: "/seller/offers",
+      badge: offersCount > 0 ? offersCount : undefined,
+      isActive: pathname === "/seller/offers",
+    },
+    {
+      label: "My Deals",
+      href: "/seller/deals",
+      badge: dealsCount > 0 ? dealsCount : undefined,
+      isActive: pathname === "/seller/deals",
     },
     {
       label: "Support",
@@ -299,14 +331,14 @@ export default function SellerSidebar({
             className="flex items-center gap-3 hover:opacity-90 transition-opacity"
           >
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#00cfa8] to-[#00957b] text-[#070b14] text-xs font-bold flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(0,207,168,0.2)]">
-              {initials(profile?.fullName)}
+              {initials(currentProfile?.fullName)}
             </div>
             <div className="min-w-0">
               <div className="text-sm font-medium text-[#d8e4f0] truncate">
-                {profile?.fullName ?? "Seller"}
+                {currentProfile?.fullName ?? "Seller"}
               </div>
               <div className="text-[11px] text-[#4f6380] truncate">
-                {verificationLabel(profile?.verificationStatus)}
+                {verificationLabel(currentProfile?.verificationStatus)}
               </div>
             </div>
           </Link>

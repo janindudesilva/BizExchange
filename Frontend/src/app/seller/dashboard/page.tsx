@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { apiRequest } from "@/lib/api";
 import SellerSidebar from "@/components/SellerSidebar";
+import { Offer } from "@/types/offer";
+import { Deal } from "@/types/deal";
 
 type VerificationStatus = "PENDING" | "APPROVED" | "REJECTED";
 
@@ -90,6 +92,8 @@ export default function SellerDashboardPage() {
   const [profile, setProfile] = useState<SellerProfile | null>(null);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [deals, setDeals] = useState<Deal[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
@@ -134,10 +138,12 @@ export default function SellerDashboardPage() {
       apiRequest<SellerProfile>(`/seller/profile/${userId}`),
       apiRequest<{ data: Business[] }>(`/businesses/seller/${userId}`),
       apiRequest<{ data: Inquiry[] }>("/inquiries/received"),
+      apiRequest<{ data: Offer[] }>("/offers/received"),
+      apiRequest<{ data: Deal[] }>("/deals/my"),
       apiRequest<{ data: Ticket[] }>("/tickets/my"),
       apiRequest<{ data: number }>("/notifications/unread/count"),
       apiRequest<{ data: Notification[] }>("/notifications"),
-    ]).then(([profileRes, businessRes, inqRes, ticketsRes, unreadRes, notifRes]) => {
+    ]).then(([profileRes, businessRes, inqRes, offersRes, dealsRes, ticketsRes, unreadRes, notifRes]) => {
       if (ignore) return;
       if (profileRes.status === "fulfilled") {
         setProfile(profileRes.value);
@@ -147,6 +153,12 @@ export default function SellerDashboardPage() {
       }
       if (inqRes.status === "fulfilled") {
         setInquiries(inqRes.value.data ?? []);
+      }
+      if (offersRes.status === "fulfilled") {
+        setOffers(offersRes.value.data ?? []);
+      }
+      if (dealsRes.status === "fulfilled") {
+        setDeals(dealsRes.value.data ?? []);
       }
       if (ticketsRes.status === "fulfilled") {
         setTickets(ticketsRes.value.data ?? []);
@@ -192,12 +204,12 @@ export default function SellerDashboardPage() {
 
   // Real Calculated Metrics
   const totalInquiries = inquiries.length;
-  const pendingOffers = inquiries.filter(
+  const pendingInquiries = inquiries.filter(
     (i) => i.status?.toUpperCase() === "PENDING_APPROVAL"
   ).length;
-  const activeDeals = inquiries.filter(
-    (i) => i.status?.toUpperCase() === "ACTIVE"
-  ).length;
+
+  const pendingOffersCount = offers.filter((o) => o.status === "PENDING").length;
+  const activeDealsCount = deals.filter((d) => d.status === "IN_PROGRESS").length;
 
   const openTickets = tickets.filter(
     (t) => t.status?.toUpperCase() !== "RESOLVED" && t.status?.toUpperCase() !== "CLOSED"
@@ -226,8 +238,9 @@ export default function SellerDashboardPage() {
         setSidebarOpen={setSidebarOpen}
         profile={profile ? { fullName: profile.fullName, verificationStatus: verificationStatus || undefined } : null}
         badges={{
-          inquiries: pendingOffers,
-          deals: activeDeals,
+          inquiries: pendingInquiries,
+          offers: pendingOffersCount,
+          deals: activeDealsCount,
           tickets: openTickets,
           notifications: unreadNotifCount,
         }}
@@ -446,39 +459,45 @@ export default function SellerDashboardPage() {
               </div>
             </div>
 
-            {/* Card 3: Pending Inquiries */}
-            <div className="glass-panel stat-card-accent-amber rounded-2xl p-5 flex flex-col justify-between">
+            {/* Card 3: Pending Offers */}
+            <Link
+              href="/seller/offers"
+              className="glass-panel stat-card-accent-amber rounded-2xl p-5 flex flex-col justify-between hover:border-amber-500/30 transition-all block"
+            >
               <div>
                 <div className="text-[11px] tracking-[0.1em] text-[#4f6380] font-semibold uppercase">
-                  PENDING INQUIRIES
+                  PENDING OFFERS
                 </div>
                 <div className="text-2xl sm:text-3xl font-bold text-[#f59e0b] mt-3 tabular-nums">
-                  {pendingOffers}
+                  {pendingOffersCount}
                 </div>
               </div>
               <div className="text-xs text-[#8493a8] mt-3">
-                {pendingOffers > 0
-                  ? `${pendingOffers} awaiting your response`
-                  : "All inquiries reviewed"}
+                {pendingOffersCount > 0
+                  ? `${pendingOffersCount} awaiting your acceptance`
+                  : "No pending offers"}
               </div>
-            </div>
+            </Link>
 
-            {/* Card 4: Active Conversations */}
-            <div className="glass-panel stat-card-accent-teal rounded-2xl p-5 flex flex-col justify-between">
+            {/* Card 4: Active Deals */}
+            <Link
+              href="/seller/deals"
+              className="glass-panel stat-card-accent-teal rounded-2xl p-5 flex flex-col justify-between hover:border-[#00cfa8]/30 transition-all block"
+            >
               <div>
                 <div className="text-[11px] tracking-[0.1em] text-[#4f6380] font-semibold uppercase">
-                  ACTIVE CONVERSATIONS
+                  ACTIVE DEALS
                 </div>
                 <div className="text-2xl sm:text-3xl font-bold text-[#00cfa8] mt-3 tabular-nums">
-                  {activeDeals}
+                  {activeDealsCount}
                 </div>
               </div>
               <div className="text-xs text-[#8493a8] mt-3">
-                {activeDeals > 0
-                  ? `${activeDeals} active inquiry threads`
-                  : "No active conversations in progress"}
+                {activeDealsCount > 0
+                  ? `${activeDealsCount} in progress closing`
+                  : "No deals in progress"}
               </div>
-            </div>
+            </Link>
           </div>
 
           {/* ── Lower Section ── */}
@@ -579,9 +598,9 @@ export default function SellerDashboardPage() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#8092ab]">Inquiries Received</span>
-                    <span className="text-[#d8e4f0] font-semibold tabular-nums">
-                      {pendingOffers + activeDeals}
+                    <span className="text-[#8092ab]">Active Deals</span>
+                    <span className="text-[#00cfa8] font-semibold tabular-nums">
+                      {activeDealsCount}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">

@@ -13,11 +13,20 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 @Repository
 public interface BusinessRepository extends JpaRepository<Business, Long>, JpaSpecificationExecutor<Business> {
     @Override
     @EntityGraph(attributePaths = {"seller", "category"})
     Optional<Business> findById(Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT b FROM Business b WHERE b.id = :id")
+    Optional<Business> findByIdForUpdate(@Param("id") Long id);
 
     @Override
     @EntityGraph(attributePaths = {"seller", "category"})

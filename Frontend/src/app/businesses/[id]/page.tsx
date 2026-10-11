@@ -2,6 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { SingleBusinessApiResponse, BusinessFile } from "@/types/business";
 import SendInquiryButton from "@/components/SendInquiryButton";
+import MakeOfferButton from "@/components/MakeOfferButton";
+import ReportBusinessActions from "@/components/ReportBusinessActions";
 import AuthenticatedFileLink from "@/components/AuthenticatedFileLink";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
@@ -271,6 +273,14 @@ export default async function BusinessDetailsPage({
             {/* Inquiry Action */}
             <SendInquiryButton businessId={business.id} />
 
+            {/* Formal Offer Action */}
+            <MakeOfferButton
+              businessId={business.id}
+              businessTitle={business.title}
+              askingPrice={business.askingPrice}
+              isSold={business.status === "SOLD"}
+            />
+
             {/* Seller profile tile */}
             <div className="pt-6 border-t border-white/10 space-y-4">
               <span className="text-[10px] uppercase font-bold tracking-widest text-[#627288] block">
@@ -304,6 +314,14 @@ export default async function BusinessDetailsPage({
                 <span>Fast Seller Response Track</span>
               </div>
             </div>
+
+            {/* Reporting Actions */}
+            <ReportBusinessActions
+              businessId={business.id}
+              businessTitle={business.title}
+              sellerId={business.sellerId}
+              sellerName={business.sellerName}
+            />
           </div>
         </div>
       </div>

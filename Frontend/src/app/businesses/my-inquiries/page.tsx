@@ -9,18 +9,7 @@ export default function MyInquiriesPage() {
     const [inquiries, setInquiries] = useState<Inquiry[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [submittingReview, setSubmittingReview] = useState<number | null>(null);
 
-    const fetchInquiries = async () => {
-        try {
-            const response = await apiRequest<InquiryApiResponse>("/inquiries/sent");
-            setInquiries(response.data);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Could not load your inquiries");
-        } finally {
-            setLoading(false);
-        }
-    };
 
     useEffect(() => {
         let ignore = false;
@@ -55,80 +44,6 @@ export default function MyInquiriesPage() {
             case "CLOSED": return <span className="text-[#4f6380]">● Closed</span>;
             default: return status;
         }
-    };
-
-    const submitReview = async (inquiry: Inquiry, rating: number, comment: string) => {
-        setSubmittingReview(inquiry.id);
-        try {
-            await apiRequest(`/reviews/seller/${inquiry.sellerId}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ rating, comment })
-            });
-            // Refresh inquiries to update hasReviewed status
-            await fetchInquiries();
-        } catch (err) {
-            console.error("Failed to submit review", err);
-            alert("Failed to submit review. Please try again.");
-        } finally {
-            setSubmittingReview(null);
-        }
-    };
-
-    const RatingForm = ({ inquiry }: { inquiry: Inquiry }) => {
-        const [rating, setRating] = useState(5);
-        const [comment, setComment] = useState("");
-        const [showForm, setShowForm] = useState(false);
-
-        if (!showForm) {
-            return (
-                <button
-                    onClick={() => setShowForm(true)}
-                    className="mt-4 bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors text-sm"
-                >
-                    Rate Seller
-                </button>
-            );
-        }
-
-        return (
-            <div className="mt-4 bg-[#0d1220] border border-white/10 rounded-xl p-4">
-                <h4 className="text-[#d8e4f0] font-semibold mb-3">Rate {inquiry.sellerName}</h4>
-                <div className="flex gap-2 mb-3">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                            key={star}
-                            onClick={() => setRating(star)}
-                            className={`text-2xl transition-colors ${star <= rating ? "text-yellow-500" : "text-[#4f6380]"}`}
-                        >
-                            ★
-                        </button>
-                    ))}
-                </div>
-                <textarea
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    placeholder="Share your experience (optional)"
-                    className="w-full bg-[#121c32] border border-white/10 text-[#c7d2e0] placeholder:text-[#4f6380] p-3 rounded-lg focus:outline-none focus:border-[#00cfa8]/50 transition-colors text-sm resize-none"
-                    rows={3}
-                />
-                <div className="flex gap-2 mt-3">
-                    <button
-                        onClick={() => submitReview(inquiry, rating, comment)}
-                        disabled={submittingReview === inquiry.id}
-                        className="bg-[#00cfa8] text-[#080c15] px-4 py-2 rounded-lg font-semibold hover:bg-[#00e6bc] transition-colors text-sm disabled:opacity-50"
-                    >
-                        {submittingReview === inquiry.id ? "Submitting..." : "Submit Review"}
-                    </button>
-                    <button
-                        onClick={() => setShowForm(false)}
-                        className="text-[#8092ab] px-4 py-2 rounded-lg hover:text-[#d8e4f0] transition-colors text-sm"
-                    >
-                        Cancel
-                    </button>
-                </div>
-            </div>
-        );
     };
 
     return (
@@ -188,13 +103,21 @@ export default function MyInquiriesPage() {
                             </Link>
                         )}
 
-                        {inquiry.status === "CLOSED" && !inquiry.hasReviewed && (
-                            <RatingForm inquiry={inquiry} />
-                        )}
-
-                        {inquiry.status === "CLOSED" && inquiry.hasReviewed && (
-                            <div className="mt-4 text-sm text-[#00cfa8]">
-                                ✓ You have reviewed this seller
+                        {inquiry.status === "CLOSED" && (
+                            <div className="mt-4 pt-3 border-t border-white/5 text-xs text-[#8092ab] flex items-center justify-between">
+                                <span>
+                                    {inquiry.hasReviewed
+                                        ? "✓ Seller reviewed"
+                                        : "Seller reviews require a completed acquisition deal."}
+                                </span>
+                                {!inquiry.hasReviewed && (
+                                    <Link
+                                        href="/buyer/deals"
+                                        className="text-[#00cfa8] hover:underline font-semibold"
+                                    >
+                                        My Deals Room →
+                                    </Link>
+                                )}
                             </div>
                         )}
                     </div>
