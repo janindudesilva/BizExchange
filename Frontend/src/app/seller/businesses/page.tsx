@@ -636,7 +636,7 @@ export default function MyListingsPage() {
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm text-[#c7d2e0] truncate">{file.originalName}</p>
                                                     <p className="text-[10px] text-[#4f6380]">{fileTypeLabel(file.fileType)}</p>
-                                                </div>
+                                                </div>  
                                                 {/* Preview button */}
                                                 <button
                                                     type="button"
